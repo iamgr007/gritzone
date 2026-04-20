@@ -25,12 +25,14 @@ if [ ! -f .env.local ]; then
 fi
 
 # Validate env vars are filled in
-source <(grep -v '^#' .env.local | sed 's/^/export /')
-if [[ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" || "$NEXT_PUBLIC_SUPABASE_URL" == "your-"* ]]; then
+SUPA_URL=$(grep '^NEXT_PUBLIC_SUPABASE_URL=' .env.local | cut -d'=' -f2-)
+SUPA_KEY=$(grep '^NEXT_PUBLIC_SUPABASE_ANON_KEY=' .env.local | cut -d'=' -f2-)
+
+if [[ -z "$SUPA_URL" || "$SUPA_URL" == "your-"* ]]; then
   echo -e "${RED}✗ NEXT_PUBLIC_SUPABASE_URL not configured in .env.local${NC}"
   exit 1
 fi
-if [[ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" || "$NEXT_PUBLIC_SUPABASE_ANON_KEY" == "your-"* ]]; then
+if [[ -z "$SUPA_KEY" || "$SUPA_KEY" == "your-"* ]]; then
   echo -e "${RED}✗ NEXT_PUBLIC_SUPABASE_ANON_KEY not configured in .env.local${NC}"
   exit 1
 fi
