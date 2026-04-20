@@ -43,6 +43,9 @@ export default function WorkoutPage() {
   const [saving, setSaving] = useState(false);
   const [showFinish, setShowFinish] = useState(false);
   const [notes, setNotes] = useState("");
+  const [workoutPhoto, setWorkoutPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const startTimeRef = useRef<number>(0);
 
@@ -163,12 +166,25 @@ export default function WorkoutPage() {
     if (!user) return;
     setSaving(true);
 
+    // Upload photo if selected
+    let photoUrl: string | null = null;
+    if (workoutPhoto) {
+      const ext = workoutPhoto.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("photos").upload(path, workoutPhoto);
+      if (!error) {
+        const { data: urlData } = supabase.storage.from("photos").getPublicUrl(path);
+        photoUrl = urlData.publicUrl;
+      }
+    }
+
     const { data: workout } = await supabase.from("workouts").insert({
       user_id: user.id,
       name: workoutName,
       date: new Date().toISOString().split("T")[0],
       duration_seconds: elapsed,
       notes,
+      photo_url: photoUrl,
     }).select("id").single();
 
     if (workout) {
@@ -192,6 +208,8 @@ export default function WorkoutPage() {
     setActive(false);
     setShowFinish(false);
     setSaving(false);
+    setWorkoutPhoto(null);
+    setPhotoPreview(null);
 
     // Refresh history
     const { data } = await supabase
@@ -374,8 +392,47 @@ export default function WorkoutPage() {
                 placeholder="Any notes about this workout..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="mb-4"
+                className="mb-3"
               />
+
+              {/* Workout Photo */}
+              <div className="mb-4">
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && file.type.startsWith("image/")) {
+                      setWorkoutPhoto(file);
+                      const reader = new FileReader();
+                      reader.onload = () => setPhotoPreview(reader.result as string);
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                {photoPreview ? (
+                  <div className="relative">
+                    <img src={photoPreview} alt="Workout" className="w-full h-40 object-cover rounded-xl" />
+                    <button
+                      onClick={() => { setWorkoutPhoto(null); setPhotoPreview(null); if (photoInputRef.current) photoInputRef.current.value = ""; }}
+                      className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center text-xs text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => photoInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-neutral-700 hover:border-amber-500/40 rounded-xl py-4 text-neutral-400 hover:text-amber-400 transition-colors text-sm flex items-center justify-center gap-2"
+                  >
+                    📷 Add Workout Photo
+                  </button>
+                )}
+              </div>
+
               <div className="flex gap-3">
                 <button
                   onClick={finishWorkout}
@@ -420,16 +477,21 @@ export default function WorkoutPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {history.map((w) => (
-              <div key={w.id} className="bg-[#141414] rounded-2xl border border-neutral-800 p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-semibold text-sm">{w.name}</p>
-                  <span className="text-xs text-neutral-500">{formatTime(w.duration_seconds)}</span>
+              <div key={w.id} className="bg-[#141414] rounded-2xl border border-neutral-800 overflow-hidden">
+                {w.photo_url && (
+                  <img src={w.photo_url} alt={w.name} className="w-full h-40 object-cover" />
+                )}
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-semibold text-sm">{w.name}</p>
+                    <span className="text-xs text-neutral-500">{formatTime(w.duration_seconds)}</span>
+                  </div>
+                  <p className="text-xs text-neutral-500">
+                    {new Date(w.date + "T00:00:00").toLocaleDateString("en-IN", {
+                      weekday: "short", month: "short", day: "numeric",
+                    })}
+                  </p>
                 </div>
-                <p className="text-xs text-neutral-500">
-                  {new Date(w.date + "T00:00:00").toLocaleDateString("en-IN", {
-                    weekday: "short", month: "short", day: "numeric",
-                  })}
-                </p>
               </div>
             ))}
           </div>
