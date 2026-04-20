@@ -20,7 +20,10 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { display_name: displayName || email.split("@")[0] } },
+        options: {
+          data: { display_name: displayName || email.split("@")[0] },
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+        },
       });
       if (error) {
         setError(error.message);

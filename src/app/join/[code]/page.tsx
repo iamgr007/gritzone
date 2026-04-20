@@ -42,6 +42,7 @@ export default function JoinPage() {
           display_name: displayName || email.split("@")[0],
           referral_code: code,
         },
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
 
