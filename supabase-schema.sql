@@ -1,4 +1,4 @@
--- GRIT Daily Tracker Schema
+-- GRITZONE Daily Tracker Schema
 -- Run this in your Supabase SQL Editor
 
 -- Profiles table (extends Supabase auth.users)

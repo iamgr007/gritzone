@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "GRIT — Show Up. Every Day.",
-  description: "Discipline. Consistency. Results. Track your grind daily.",
+  title: "GRITZONE — Show Up. Every Day.",
+  description: "Your discipline zone. Track weight, meals, workouts, sleep — daily.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "GRIT",
+    title: "GRITZONE",
   },
 };
 

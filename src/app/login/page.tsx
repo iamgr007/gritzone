@@ -46,8 +46,8 @@ export default function LoginPage() {
     <div className="min-h-dvh flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-black tracking-tighter text-amber-500 mb-1">GRIT</h1>
-          <p className="text-neutral-500 text-xs uppercase tracking-[0.3em]">Show up. Every day.</p>
+          <h1 className="text-4xl font-black tracking-tighter text-amber-500 mb-0.5">GRIT<span className="text-neutral-400">ZONE</span></h1>
+          <p className="text-neutral-500 text-[10px] uppercase tracking-[0.35em] mt-1">Your discipline zone</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

@@ -88,7 +88,7 @@ export default function DashboardPage() {
                 {profile?.display_name ?? user?.email?.split("@")[0]}
               </h1>
             </div>
-            <span className="text-amber-500 font-black text-lg tracking-tight">GRIT</span>
+            <span className="text-amber-500 font-black text-lg tracking-tight">GRIT<span className="text-neutral-500 font-black">ZONE</span></span>
           </div>
         </div>
 

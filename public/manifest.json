@@ -1,7 +1,7 @@
 {
-  "name": "GRIT",
-  "short_name": "GRIT",
-  "description": "Show up. Every day. Track your grind.",
+  "name": "GRITZONE",
+  "short_name": "GRITZONE",
+  "description": "Your discipline zone. Show up. Every day.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0a",

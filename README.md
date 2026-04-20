@@ -1,6 +1,8 @@
-# GRIT — Show Up. Every Day.
+# GRITZONE — Your Discipline Zone
 
 A mobile-first web app for the disciplined. Track your daily grind: weight, meals, workouts, steps, water, sleep.
+
+**Live at [gritzone.me](https://gritzone.me)**
 
 ## Setup
 
