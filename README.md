@@ -1,6 +1,6 @@
-# MaxPro - Daily Health & Fitness Tracker
+# GRIT — Show Up. Every Day.
 
-A mobile-first web app for daily health tracking: weight, meals, workouts, steps, water, sleep.
+A mobile-first web app for the disciplined. Track your daily grind: weight, meals, workouts, steps, water, sleep.
 
 ## Setup
 

@@ -119,7 +119,7 @@ export default function CheckInPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-dvh">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -127,7 +127,7 @@ export default function CheckInPage() {
   return (
     <div className="min-h-dvh pb-24">
       <div className="max-w-lg mx-auto px-4 pt-6">
-        <h1 className="text-xl font-bold mb-4">Daily Check-In</h1>
+        <h1 className="text-xl font-bold mb-4">Log Your Grind</h1>
 
         <input
           type="date"
@@ -138,7 +138,7 @@ export default function CheckInPage() {
 
         {loadingData ? (
           <div className="flex justify-center py-12">
-            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <form onSubmit={handleSave} className="flex flex-col gap-5">
@@ -192,7 +192,7 @@ export default function CheckInPage() {
                   type="button"
                   onClick={() => update("workout_done", !form.workout_done)}
                   className={`w-14 h-8 rounded-full transition-colors relative ${
-                    form.workout_done ? "bg-green-500" : "bg-neutral-700"
+                    form.workout_done ? "bg-amber-500" : "bg-neutral-700"
                   }`}
                 >
                   <span
@@ -262,8 +262,8 @@ export default function CheckInPage() {
               disabled={saving}
               className={`font-semibold rounded-xl py-3.5 mt-2 transition-all ${
                 saved
-                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                  : "bg-green-500 hover:bg-green-600 text-black"
+                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                  : "bg-amber-500 hover:bg-amber-600 text-black"
               } disabled:opacity-50`}
             >
               {saving ? "Saving..." : saved ? "✓ Saved!" : existingId ? "Update Check-In" : "Save Check-In"}

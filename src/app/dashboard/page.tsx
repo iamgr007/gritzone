@@ -62,7 +62,7 @@ export default function DashboardPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-dvh">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -81,15 +81,20 @@ export default function DashboardPage() {
       <div className="max-w-lg mx-auto px-4 pt-6">
         {/* Header */}
         <div className="mb-6">
-          <p className="text-neutral-400 text-sm">{greeting()}</p>
-          <h1 className="text-2xl font-bold">
-            {profile?.display_name ?? user?.email?.split("@")[0]}
-          </h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-neutral-500 text-xs uppercase tracking-widest">{greeting()}</p>
+              <h1 className="text-2xl font-bold">
+                {profile?.display_name ?? user?.email?.split("@")[0]}
+              </h1>
+            </div>
+            <span className="text-amber-500 font-black text-lg tracking-tight">GRIT</span>
+          </div>
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <StatCard label="Streak" value={`${streak}d`} color="text-green-400" />
+          <StatCard label="Streak" value={`${streak}d`} color="text-amber-400" />
           <StatCard
             label="Weight"
             value={todayCheckin?.morning_weight ? `${todayCheckin.morning_weight}` : "—"}
@@ -104,10 +109,10 @@ export default function DashboardPage() {
 
         {/* Today Status */}
         {todayCheckin ? (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-6">
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-400 font-semibold text-sm">Today&apos;s check-in done ✓</p>
+                <p className="text-amber-400 font-semibold text-sm">Today&apos;s check-in done ✓</p>
                 <p className="text-neutral-400 text-xs mt-0.5">
                   {todayCheckin.workout_done ? "Workout done 💪" : "No workout logged"} ·{" "}
                   {todayCheckin.water_intake}L water · {todayCheckin.sleep_hours}h sleep
@@ -115,7 +120,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 href="/checkin"
-                className="text-xs text-green-500 hover:underline"
+                className="text-xs text-amber-500 hover:underline"
               >
                 Edit
               </Link>
@@ -124,9 +129,9 @@ export default function DashboardPage() {
         ) : (
           <Link
             href="/checkin"
-            className="block bg-green-500 hover:bg-green-600 text-black font-semibold text-center rounded-2xl py-4 mb-6 transition-colors"
+            className="block bg-amber-500 hover:bg-amber-600 text-black font-semibold text-center rounded-2xl py-4 mb-6 transition-colors"
           >
-            Log Today&apos;s Check-In →
+            Log Today&apos;s Grind →
           </Link>
         )}
 
@@ -160,7 +165,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex gap-2 text-xs">
-                    {c.workout_done && <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Workout</span>}
+                    {c.workout_done && <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Workout</span>}
                     {c.water_intake >= 3 && <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">Hydrated</span>}
                     {c.sleep_hours >= 7 && <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full">Well Rested</span>}
                   </div>
@@ -207,7 +212,7 @@ function WeightChart({ data }: { data: CheckIn[] }) {
     <svg viewBox={`0 0 ${w} ${h + 20}`} className="w-full h-20">
       <polyline
         fill="none"
-        stroke="#22c55e"
+        stroke="#f59e0b"
         strokeWidth="2"
         points={points.join(" ")}
       />
@@ -217,7 +222,7 @@ function WeightChart({ data }: { data: CheckIn[] }) {
         const y = h - ((d.morning_weight - min) / range) * h;
         return (
           <g key={i}>
-            <circle cx={x} cy={y} r="3" fill="#22c55e" />
+            <circle cx={x} cy={y} r="3" fill="#f59e0b" />
             <text x={x} y={h + 14} textAnchor="middle" fill="#737373" fontSize="8">
               {new Date(d.date + "T00:00:00").toLocaleDateString("en", { day: "numeric" })}
             </text>

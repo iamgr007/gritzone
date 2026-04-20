@@ -46,8 +46,8 @@ export default function LoginPage() {
     <div className="min-h-dvh flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-green-500 mb-1">MaxPro</h1>
-          <p className="text-neutral-400 text-sm">Daily Health Tracker</p>
+          <h1 className="text-4xl font-black tracking-tighter text-amber-500 mb-1">GRIT</h1>
+          <p className="text-neutral-500 text-xs uppercase tracking-[0.3em]">Show up. Every day.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-black font-semibold rounded-xl py-3 mt-2 transition-colors"
+            className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-black font-semibold rounded-xl py-3 mt-2 transition-colors"
           >
             {loading ? "..." : mode === "login" ? "Log In" : "Sign Up"}
           </button>
@@ -103,7 +103,7 @@ export default function LoginPage() {
           {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
           <button
             onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }}
-            className="text-green-500 hover:underline"
+            className="text-amber-500 hover:underline"
           >
             {mode === "login" ? "Sign Up" : "Log In"}
           </button>

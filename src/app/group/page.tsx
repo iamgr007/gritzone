@@ -53,7 +53,7 @@ export default function GroupPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-dvh">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -61,15 +61,15 @@ export default function GroupPage() {
   return (
     <div className="min-h-dvh pb-24">
       <div className="max-w-lg mx-auto px-4 pt-6">
-        <h1 className="text-xl font-bold mb-2">Accountability Group</h1>
-        <p className="text-neutral-500 text-sm mb-6">Track each other&apos;s progress</p>
+        <h1 className="text-xl font-bold mb-2">The Squad</h1>
+        <p className="text-neutral-500 text-sm mb-6">We grind together.</p>
 
         <div className="flex flex-col gap-4">
           {members.map((m) => (
             <div key={m.id} className="bg-[#141414] rounded-2xl border border-neutral-800 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold text-sm">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-sm">
                     {m.display_name.charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -78,7 +78,7 @@ export default function GroupPage() {
                   </div>
                 </div>
                 {m.todayCheckin ? (
-                  <span className="text-xs bg-green-500/20 text-green-400 px-2.5 py-1 rounded-full">
+                  <span className="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full">
                     Checked in ✓
                   </span>
                 ) : (

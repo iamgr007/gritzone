@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MaxPro - Daily Tracker",
-  description: "Track your daily health, fitness, and habits",
+  title: "GRIT — Show Up. Every Day.",
+  description: "Discipline. Consistency. Results. Track your grind daily.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MaxPro",
+    title: "GRIT",
   },
 };
 

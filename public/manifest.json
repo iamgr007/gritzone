@@ -1,7 +1,7 @@
 {
-  "name": "MaxPro",
-  "short_name": "MaxPro",
-  "description": "Daily Health & Fitness Tracker",
+  "name": "GRIT",
+  "short_name": "GRIT",
+  "description": "Show up. Every day. Track your grind.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0a",

@@ -1,5 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="100" fill="#0a0a0a"/>
-  <text x="256" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="200" fill="#22c55e">M</text>
-  <text x="256" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-weight="600" font-size="72" fill="#a3a3a3">PRO</text>
+  <rect x="40" y="40" width="432" height="432" rx="80" fill="none" stroke="#f59e0b" stroke-width="8" opacity="0.3"/>
+  <text x="256" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="180" fill="#f59e0b" letter-spacing="-8">GRIT</text>
+  <line x1="126" y1="340" x2="386" y2="340" stroke="#f59e0b" stroke-width="6" opacity="0.6"/>
+  <text x="256" y="400" text-anchor="middle" font-family="Arial, sans-serif" font-weight="400" font-size="40" fill="#737373" letter-spacing="12">EVERY DAY</text>
 </svg>

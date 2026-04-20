@@ -26,7 +26,7 @@ export default function Home() {
   return (
     <div className="flex items-center justify-center min-h-dvh">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-neutral-400 text-sm">Loading...</p>
       </div>
     </div>

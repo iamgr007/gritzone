@@ -41,7 +41,7 @@ export default function HistoryPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-dvh">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -93,7 +93,7 @@ export default function HistoryPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : checkins.length === 0 ? (
           <p className="text-center text-neutral-500 py-12">No check-ins this month</p>
@@ -122,7 +122,7 @@ export default function HistoryPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {c.workout_done && <span className="text-green-400 text-xs">💪</span>}
+                    {c.workout_done && <span className="text-amber-400 text-xs">💪</span>}
                     <span className="text-neutral-500 text-xs">{expandedId === c.id ? "▲" : "▼"}</span>
                   </div>
                 </button>

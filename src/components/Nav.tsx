@@ -24,7 +24,7 @@ export default function Nav() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors ${
-                active ? "text-green-500" : "text-neutral-500 hover:text-neutral-300"
+                active ? "text-amber-500" : "text-neutral-500 hover:text-neutral-300"
               }`}
             >
               <span className="text-xl">{item.icon}</span>
