@@ -1,31 +1,24 @@
 # 📱 GRITZONE Mobile App Guide
 
-## Quick Start (iOS + Android from PWA)
+Capacitor is already installed. Icons are generated in `public/icons/`.
 
-Your app is already a PWA. Use Capacitor to wrap it into native apps without rewriting.
+## Add Native Platforms
 
-### 1. Install Capacitor
 ```bash
-npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
-npm install @capacitor/camera @capacitor/splash-screen @capacitor/status-bar
+# Requires: macOS + Xcode for iOS, Android Studio for Android
+npm run cap:add:ios
+npm run cap:add:android
+
+# Then regenerate native icons & splash for the platforms
+npm run cap:assets
+
+# Sync web build into native
+npm run cap:sync
+
+# Open in IDEs
+npm run cap:open:ios       # macOS only
+npm run cap:open:android
 ```
-
-### 2. Add platforms
-```bash
-npx cap add ios
-npx cap add android
-```
-
-### 3. Sync & run
-```bash
-npx cap sync
-npx cap open ios       # Opens Xcode (requires macOS)
-npx cap open android   # Opens Android Studio
-```
-
-Your `capacitor.config.ts` is already set up — it points to https://gritzone.me so any web change ships instantly without store review.
-
----
 
 ## Publishing Checklist
 

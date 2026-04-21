@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
+import { celebrate, haptic } from "@/lib/celebrate";
 
 type WorkoutSet = {
   exercise: Exercise;
@@ -210,6 +211,7 @@ export default function WorkoutPage() {
   }
 
   function updateSet(exIdx: number, setIdx: number, field: keyof WorkoutSet, value: string | boolean) {
+    if (field === "done" && value === true) haptic("medium"); // vibrate when set completed
     setExercises((prev) => {
       const copy = [...prev];
       const group = { ...copy[exIdx], sets: [...copy[exIdx].sets] };
@@ -282,6 +284,7 @@ export default function WorkoutPage() {
     setSaving(false);
     setWorkoutPhoto(null);
     setPhotoPreview(null);
+    celebrate(); // 🎉 on workout finish
 
     // Refresh history
     const { data } = await supabase

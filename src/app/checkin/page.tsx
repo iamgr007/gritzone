@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import type { CheckIn } from "@/lib/types";
+import { celebrate, haptic } from "@/lib/celebrate";
 
 function todayStr() {
   return new Date().toISOString().split("T")[0];
@@ -106,9 +107,13 @@ export default function CheckInPage() {
     if (existingId) {
       const { user_id, date: _d, ...updatePayload } = payload;
       await supabase.from("checkins").update(updatePayload).eq("id", existingId);
+      haptic("light");
     } else {
       const { data } = await supabase.from("checkins").insert(payload).select("id").single();
-      if (data) setExistingId(data.id);
+      if (data) {
+        setExistingId(data.id);
+        celebrate(); // confetti + haptic for first check-in of the day
+      }
     }
 
     setSaving(false);

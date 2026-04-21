@@ -7,6 +7,7 @@ import Nav from "@/components/Nav";
 import Link from "next/link";
 import type { CheckIn, Profile } from "@/lib/types";
 import { BADGE_MAP } from "@/lib/badges";
+import { getLevel, formatXP, XP_ACTIONS } from "@/lib/xp";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -163,6 +164,15 @@ export default function DashboardPage() {
   const formatTime = (s: number) => { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; };
   const timeAgo = (d: string) => { const diff = Math.floor((Date.now() - new Date(d).getTime()) / 1000); if (diff < 60) return "now"; if (diff < 3600) return `${Math.floor(diff / 60)}m`; if (diff < 86400) return `${Math.floor(diff / 3600)}h`; return `${Math.floor(diff / 86400)}d`; };
 
+  // Compute XP from activity (no extra DB queries — uses what we already loaded)
+  const totalXP =
+    recentCheckins.length * XP_ACTIONS.daily_checkin +
+    earnedBadges.length * XP_ACTIONS.earn_badge +
+    streak * XP_ACTIONS.beta_day +
+    (streak >= 3 ? XP_ACTIONS.finish_workout_streak_3 : 0) +
+    (streak >= 7 ? XP_ACTIONS.finish_workout_streak_7 : 0);
+  const levelInfo = getLevel(totalXP);
+
   return (
     <div className="min-h-dvh pb-24">
       <div className="max-w-lg mx-auto px-4 pt-6">
@@ -195,6 +205,32 @@ export default function DashboardPage() {
           <StatCard label="Weight" value={todayCheckin?.morning_weight ? `${todayCheckin.morning_weight}` : "—"} color="text-blue-400" />
           <StatCard label="Steps" value={todayCheckin?.steps_count ? todayCheckin.steps_count.toLocaleString() : "—"} color="text-purple-400" />
         </div>
+
+        {/* Level / XP Bar */}
+        <Link href="/achievements" className="block mb-6 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-2xl p-4 hover:border-amber-500/40 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{levelInfo.icon}</span>
+              <div>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-widest">Level {levelInfo.level}</p>
+                <p className="font-bold text-sm">{levelInfo.title}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-amber-400 font-black text-lg leading-none">{formatXP(totalXP)}</p>
+              <p className="text-[9px] text-neutral-500">XP</p>
+            </div>
+          </div>
+          <div className="h-2 bg-neutral-900 rounded-full overflow-hidden relative">
+            <div
+              className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-amber-300 transition-all duration-700"
+              style={{ width: `${levelInfo.progress}%` }}
+            />
+          </div>
+          <p className="text-[9px] text-neutral-500 mt-1.5 text-right">
+            {levelInfo.currentXp} / {levelInfo.nextXp} to next level
+          </p>
+        </Link>
 
         {/* Beta Tester Badge Banner */}
         {earnedBadges.some(b => b.badge_key === "beta_tester") && (() => {

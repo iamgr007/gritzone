@@ -76,6 +76,17 @@ export default function SettingsPage() {
 
         {/* Links */}
         <div className="flex flex-col gap-2">
+          <Link href="/settings/subscription" className="flex items-center justify-between bg-[#141414] rounded-2xl border border-neutral-800 p-4 hover:border-amber-500/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">💳</span>
+              <div>
+                <p className="font-semibold text-sm">Subscription</p>
+                <p className="text-[10px] text-neutral-500">Manage your plan, view payments & cancel</p>
+              </div>
+            </div>
+            <span className="text-neutral-500">→</span>
+          </Link>
+
           <Link href="/pro" className="flex items-center justify-between bg-[#141414] rounded-2xl border border-neutral-800 p-4 hover:border-amber-500/30 transition-colors">
             <div className="flex items-center gap-3">
               <span className="text-xl">👑</span>

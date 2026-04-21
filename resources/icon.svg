@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#1a1a1a"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+  <g transform="translate(512 512)">
+    <!-- G lettermark -->
+    <text x="0" y="0"
+          font-family="-apple-system, Helvetica, Arial, sans-serif"
+          font-weight="900"
+          font-size="620"
+          fill="url(#glow)"
+          text-anchor="middle"
+          dominant-baseline="central"
+          letter-spacing="-40">G</text>
+  </g>
+  <!-- Subtle amber accent line -->
+  <rect x="150" y="870" width="724" height="6" rx="3" fill="#f59e0b" opacity="0.6"/>
+</svg>

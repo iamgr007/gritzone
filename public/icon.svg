@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#0a0a0a"/>
-  <rect x="40" y="40" width="432" height="432" rx="80" fill="none" stroke="#f59e0b" stroke-width="6" opacity="0.25"/>
-  <text x="256" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="140" fill="#f59e0b" letter-spacing="-4">GRIT</text>
-  <text x="256" y="370" text-anchor="middle" font-family="Arial, sans-serif" font-weight="400" font-size="80" fill="#525252" letter-spacing="6">ZONE</text>
-  <line x1="146" y1="300" x2="366" y2="300" stroke="#f59e0b" stroke-width="4" opacity="0.5"/>
-</svg>

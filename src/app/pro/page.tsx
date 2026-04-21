@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
-import { startRazorpayCheckout, RazorpayPlan } from "@/lib/razorpay";
+import { startPayUCheckout, PayUPlan } from "@/lib/payu";
 
 type Billing = "monthly" | "yearly";
 
@@ -85,21 +85,37 @@ export default function ProPage() {
     setTimeout(() => setToast(null), 4000);
   }
 
+  // Handle redirect back from PayU
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    if (status === "success") {
+      showToast("✓ Payment successful! Your plan is now active.");
+      setTimeout(() => { window.location.href = "/dashboard"; }, 2000);
+    } else if (status === "failed") {
+      showToast("Payment failed. Please try again.");
+    } else if (status === "invalid_signature") {
+      showToast("Payment verification failed. Contact support.");
+    } else if (status === "error") {
+      showToast(params.get("msg") || "Something went wrong.");
+    }
+    if (status) {
+      // Clean URL
+      window.history.replaceState({}, "", "/pro");
+    }
+  }, []);
+
   async function handleUpgrade(planKey: string) {
     if (planKey === "free") return;
-    const plan = `${planKey}_${billing}` as RazorpayPlan;
+    const plan = `${planKey}_${billing}` as PayUPlan;
     setLoading(planKey);
-    await startRazorpayCheckout(plan, {
-      onSuccess: () => {
-        setLoading(null);
-        showToast("✓ Payment successful! Your plan is now active.");
-        setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
-      },
+    await startPayUCheckout(plan, {
       onError: (msg) => {
         setLoading(null);
         showToast(msg);
       },
     });
+    // Note: on success, PayU redirects away — this component unmounts
   }
 
   if (authLoading) {
@@ -203,7 +219,7 @@ export default function ProPage() {
         <div className="mt-6 flex items-center justify-center gap-3 text-[10px] text-neutral-600 flex-wrap">
           <span>🔒 Secure payment</span>
           <span>·</span>
-          <span>Powered by Razorpay</span>
+          <span>Powered by PayU</span>
           <span>·</span>
           <span>UPI / Cards / Netbanking</span>
         </div>
