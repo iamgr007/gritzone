@@ -126,6 +126,15 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="px-4 py-8 border-t border-neutral-900 text-center">
+        <div className="flex items-center justify-center gap-4 text-xs text-neutral-500 mb-3 flex-wrap">
+          <Link href="/privacy" className="hover:text-amber-500">Privacy</Link>
+          <span>·</span>
+          <Link href="/terms" className="hover:text-amber-500">Terms</Link>
+          <span>·</span>
+          <Link href="/refund" className="hover:text-amber-500">Refunds</Link>
+          <span>·</span>
+          <a href="mailto:support@gritzone.me" className="hover:text-amber-500">Contact</a>
+        </div>
         <p className="text-neutral-600 text-xs">
           <span className="text-amber-500 font-bold">GRIT</span>ZONE · Made for lifters, by lifters · © 2026
         </p>
@@ -168,40 +177,6 @@ function PlanTeaser({ name, price, features, highlight }: { name: string; price:
       <ul className="text-xs text-neutral-400 flex flex-col gap-1">
         {features.map((f, i) => <li key={i}>✓ {f}</li>)}
       </ul>
-    </div>
-  );
-}
-"use client";
-
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import type { User } from "@supabase/supabase-js";
-
-export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoading(false);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      window.location.href = "/login";
-    } else if (!loading && user) {
-      window.location.href = "/dashboard";
-    }
-  }, [loading, user]);
-
-  return (
-    <div className="flex items-center justify-center min-h-dvh">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-neutral-400 text-sm">Loading...</p>
-      </div>
     </div>
   );
 }
