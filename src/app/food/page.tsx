@@ -71,6 +71,13 @@ export default function FoodPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanMealRef = useRef<MealType | null>(null);
 
+  // Toast for errors
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 5000);
+  }
 
 
   useEffect(() => {
@@ -108,7 +115,8 @@ export default function FoodPage() {
       user_id: user.id, date, meal_type: meal,
       food_name: selectedFood.name, quantity: qty, unit: selectedFood.unit, ...nutr,
     };
-    const { data } = await supabase.from("food_logs").insert(entry).select("*").single();
+    const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
+    if (error) { showToast(`Failed to log: ${error.message}`); return; }
     if (data) setLogs((prev) => [...prev, data as FoodLog]);
     closeSearch();
   }
@@ -120,7 +128,8 @@ export default function FoodPage() {
       user_id: user.id, date, meal_type: meal,
       food_name: food.name, quantity: food.defaultQty, unit: food.unit, ...nutr,
     };
-    const { data } = await supabase.from("food_logs").insert(entry).select("*").single();
+    const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
+    if (error) { showToast(`Failed to log: ${error.message}`); return; }
     if (data) setLogs((prev) => [...prev, data as FoodLog]);
     closeSearch();
   }
@@ -133,7 +142,8 @@ export default function FoodPage() {
       calories: parseInt(customCal) || 0, protein: parseFloat(customProtein) || 0,
       carbs: parseFloat(customCarbs) || 0, fat: parseFloat(customFat) || 0,
     };
-    const { data } = await supabase.from("food_logs").insert(entry).select("*").single();
+    const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
+    if (error) { showToast(`Failed to log: ${error.message}`); return; }
     if (data) setLogs((prev) => [...prev, data as FoodLog]);
     closeSearch();
   }
@@ -595,6 +605,16 @@ export default function FoodPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {toast && (
+        <div className="fixed top-4 left-4 right-4 z-[60] max-w-lg mx-auto">
+          <div className="bg-red-500/90 text-white text-sm rounded-xl px-4 py-3 flex items-center justify-between shadow-lg">
+            <span>{toast}</span>
+            <button onClick={() => setToast(null)} className="ml-2 text-white/70 hover:text-white">✕</button>
           </div>
         </div>
       )}
