@@ -71,9 +71,7 @@ export default function FoodPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanMealRef = useRef<MealType | null>(null);
 
-  // Tier gating
-  const [showPaywall, setShowPaywall] = useState(false);
-  const userTier = typeof window !== "undefined" ? (localStorage.getItem("gritzone_user_tier") || "free") : "free";
+
 
   useEffect(() => {
     if (!user) return;
@@ -181,10 +179,6 @@ export default function FoodPage() {
   }
 
   function triggerScan(meal: MealType) {
-    if (userTier !== "promax") {
-      setShowPaywall(true);
-      return;
-    }
     scanMealRef.current = meal;
     setScanMeal(meal);
     fileInputRef.current?.click();
@@ -489,7 +483,7 @@ export default function FoodPage() {
                 >
                   <span className="w-10 h-10 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-xl flex items-center justify-center text-lg">📷</span>
                   <div>
-                    <p className="text-sm font-medium text-amber-400">Scan Food Photo {userTier !== "promax" && <span className="text-[8px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full ml-1 font-bold">PRO MAX</span>}</p>
+                    <p className="text-sm font-medium text-amber-400">Scan Food Photo <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full ml-1 font-bold">FREE IN BETA</span></p>
                     <p className="text-[10px] text-neutral-500">AI identifies food & calculates macros</p>
                   </div>
                 </button>
@@ -601,23 +595,6 @@ export default function FoodPage() {
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ProMax Paywall Modal */}
-      {showPaywall && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-4">
-          <div className="bg-[#141414] rounded-3xl border border-neutral-800 p-6 max-w-sm w-full text-center">
-            <span className="text-4xl mb-3 block">👑</span>
-            <h2 className="text-lg font-bold text-amber-400 mb-1">Pro Max Feature</h2>
-            <p className="text-xs text-neutral-400 mb-5">
-              AI Food Scanner is available on the Pro Max plan. Snap a photo and instantly get calories & macros for everything on your plate.
-            </p>
-            <a href="/pro" className="block w-full bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-xl py-3 text-sm transition-colors mb-3">
-              View Plans →
-            </a>
-            <button onClick={() => setShowPaywall(false)} className="text-neutral-500 text-xs hover:underline">Maybe later</button>
           </div>
         </div>
       )}

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import Link from "next/link";
 import type { CheckIn, Profile } from "@/lib/types";
+import { BADGE_MAP } from "@/lib/badges";
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -58,6 +59,9 @@ export default function DashboardPage() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedSettings] = useState<FeedSettings>(getFeedSettings);
+  const [earnedBadges, setEarnedBadges] = useState<{ badge_key: string; earned_at: string }[]>([]);
+  const [showBadgePanel, setShowBadgePanel] = useState(false);
+  const [newBadgeKeys, setNewBadgeKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -75,6 +79,28 @@ export default function DashboardPage() {
     }
     load();
   }, [user]);
+
+  // Load earned badges
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("user_badges").select("badge_key, earned_at").eq("user_id", user.id).order("earned_at", { ascending: false }).then(({ data }) => {
+      const badges = (data ?? []) as { badge_key: string; earned_at: string }[];
+      setEarnedBadges(badges);
+      const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const seenStr = localStorage.getItem("gritzone_seen_badges") || "[]";
+      let seen: string[] = [];
+      try { seen = JSON.parse(seenStr); } catch {}
+      const newKeys = new Set(badges.filter(b => new Date(b.earned_at) > sevenDaysAgo && !seen.includes(b.badge_key)).map(b => b.badge_key));
+      setNewBadgeKeys(newKeys);
+    });
+  }, [user]);
+
+  function dismissBadgeNotifs() {
+    const allKeys = earnedBadges.map(b => b.badge_key);
+    localStorage.setItem("gritzone_seen_badges", JSON.stringify(allKeys));
+    setNewBadgeKeys(new Set());
+    setShowBadgePanel(false);
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -148,6 +174,12 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold">{profile?.display_name ?? user?.email?.split("@")[0]}</h1>
             </div>
             <div className="flex items-center gap-3">
+              <button onClick={() => setShowBadgePanel(true)} className="relative text-neutral-500 hover:text-neutral-300 text-lg">
+                🔔
+                {newBadgeKeys.size > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-[8px] text-black font-bold">{newBadgeKeys.size}</span>
+                )}
+              </button>
               <Link href="/settings" className="text-neutral-500 hover:text-neutral-300 text-lg">⚙️</Link>
               <div className="text-right">
                 <span className="text-amber-500 font-black text-lg tracking-tight">GRIT<span className="text-neutral-500 font-black">ZONE</span></span>
@@ -163,6 +195,24 @@ export default function DashboardPage() {
           <StatCard label="Weight" value={todayCheckin?.morning_weight ? `${todayCheckin.morning_weight}` : "—"} color="text-blue-400" />
           <StatCard label="Steps" value={todayCheckin?.steps_count ? todayCheckin.steps_count.toLocaleString() : "—"} color="text-purple-400" />
         </div>
+
+        {/* Beta Tester Badge Banner */}
+        {earnedBadges.some(b => b.badge_key === "beta_tester") && (() => {
+          const betaBadge = earnedBadges.find(b => b.badge_key === "beta_tester")!;
+          const daysSince = Math.max(1, Math.floor((Date.now() - new Date(betaBadge.earned_at).getTime()) / 86400000));
+          return (
+            <Link href="/achievements" className="block bg-gradient-to-r from-amber-500/10 to-purple-500/10 border border-amber-500/20 rounded-2xl p-3 mb-5">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🧪</span>
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-amber-400">Beta Tester · Day {daysSince}</p>
+                  <p className="text-[10px] text-neutral-500">Every day in beta = 1 free Pro day at launch</p>
+                </div>
+                <span className="text-xs text-neutral-500">→</span>
+              </div>
+            </Link>
+          );
+        })()}
 
         {/* Today Status */}
         {todayCheckin ? (
@@ -210,6 +260,52 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Badge Notification Panel */}
+      {showBadgePanel && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 border border-neutral-800 max-h-[70vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">🔔 Notifications</h2>
+              <button onClick={() => setShowBadgePanel(false)} className="text-neutral-500 text-lg">✕</button>
+            </div>
+
+            {earnedBadges.length === 0 ? (
+              <p className="text-neutral-500 text-sm text-center py-6">No badges earned yet. Keep grinding!</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {earnedBadges.map(b => {
+                  const badge = BADGE_MAP[b.badge_key];
+                  if (!badge) return null;
+                  const isNew = newBadgeKeys.has(b.badge_key);
+                  const earnedDate = new Date(b.earned_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+                  return (
+                    <div key={b.badge_key} className={`flex items-center gap-3 p-3 rounded-xl ${isNew ? "bg-amber-500/10 border border-amber-500/20" : "bg-neutral-900"}`}>
+                      <span className="text-2xl">{badge.icon}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold">{badge.name} {isNew && <span className="text-[8px] bg-amber-500 text-black px-1.5 py-0.5 rounded-full ml-1 font-bold">NEW</span>}</p>
+                        <p className="text-[10px] text-neutral-500">{badge.description}</p>
+                      </div>
+                      <span className="text-[10px] text-neutral-600">{earnedDate}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {newBadgeKeys.size > 0 && (
+              <button onClick={dismissBadgeNotifs} className="w-full mt-4 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-medium rounded-xl py-3 text-sm transition-colors">
+                Mark all as read
+              </button>
+            )}
+
+            <Link href="/achievements" className="block text-center text-amber-500 text-xs mt-3 hover:underline">
+              View all badges →
+            </Link>
+          </div>
+        </div>
+      )}
+
       <Nav />
     </div>
   );

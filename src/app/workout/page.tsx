@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
 
 type WorkoutSet = {
@@ -18,6 +19,7 @@ type WorkoutSet = {
 type ExerciseGroup = {
   exercise: Exercise;
   sets: WorkoutSet[];
+  prevBest?: string; // e.g. "60kg × 10"
 };
 
 type SavedWorkout = {
@@ -29,6 +31,16 @@ type SavedWorkout = {
   sets_count?: number;
   exercises?: string[];
 };
+
+type RegimeExercise = { exercise: Exercise; sets: number; reps: string; rest: string };
+type Regime = {
+  id: string;
+  name: string;
+  days: { name: string; exercises: RegimeExercise[] }[];
+  is_template: boolean;
+};
+
+type PrevSet = { exercise_name: string; weight_kg: number; reps: number };
 
 export default function WorkoutPage() {
   const { user, loading: authLoading } = useAuth();
@@ -49,6 +61,11 @@ export default function WorkoutPage() {
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const startTimeRef = useRef<number>(0);
 
+  // Regime picker state
+  const [showRegimePicker, setShowRegimePicker] = useState(false);
+  const [myRegimes, setMyRegimes] = useState<Regime[]>([]);
+  const [prevSets, setPrevSets] = useState<PrevSet[]>([]);
+
   // Load from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("gritzone_active_workout");
@@ -62,7 +79,25 @@ export default function WorkoutPage() {
         setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
       } catch { /* ignore */ }
     }
+    // Load regimes
+    try {
+      const regimeData = localStorage.getItem("gritzone_regimes");
+      if (regimeData) setMyRegimes(JSON.parse(regimeData));
+    } catch {}
   }, []);
+
+  // Load previous workout sets for "Prev" column
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("workout_sets")
+      .select("exercise_name, weight_kg, reps")
+      .order("weight_kg", { ascending: false })
+      .limit(500)
+      .then(({ data }) => {
+        if (data) setPrevSets(data as PrevSet[]);
+      });
+  }, [user]);
 
   // Timer
   useEffect(() => {
@@ -106,12 +141,49 @@ export default function WorkoutPage() {
     setNotes("");
   }
 
+  function startFromRegimeDay(regime: Regime, dayIdx: number) {
+    const day = regime.days[dayIdx];
+    startTimeRef.current = Date.now();
+    setWorkoutName(`${regime.name} — ${day.name}`);
+    setElapsed(0);
+    setNotes("");
+
+    const groups: ExerciseGroup[] = day.exercises
+      .filter(e => e.exercise)
+      .map(e => {
+        const best = getPrevBest(e.exercise.name);
+        const sets: WorkoutSet[] = Array.from({ length: e.sets }, (_, i) => ({
+          exercise: e.exercise,
+          set_number: i + 1,
+          weight_kg: "",
+          reps: "",
+          is_warmup: false,
+          done: false,
+        }));
+        return { exercise: e.exercise, sets, prevBest: best };
+      });
+
+    setExercises(groups);
+    setActive(true);
+    setShowRegimePicker(false);
+  }
+
+  function getPrevBest(exerciseName: string): string | undefined {
+    const matches = prevSets.filter(s => s.exercise_name === exerciseName);
+    if (matches.length === 0) return undefined;
+    // Find heaviest set
+    const best = matches.reduce((a, b) => (a.weight_kg * a.reps > b.weight_kg * b.reps ? a : b));
+    return `${best.weight_kg}kg × ${best.reps}`;
+  }
+
   function addExercise(ex: Exercise) {
+    const best = getPrevBest(ex.name);
     setExercises((prev) => [
       ...prev,
       {
         exercise: ex,
         sets: [{ exercise: ex, set_number: 1, weight_kg: "", reps: "", is_warmup: false, done: false }],
+        prevBest: best,
       },
     ]);
     setShowExercisePicker(false);
@@ -302,7 +374,7 @@ export default function WorkoutPage() {
                     <span className={`text-xs font-medium ${set.is_warmup ? "text-neutral-500" : "text-neutral-300"}`}>
                       {set.is_warmup ? "W" : set.set_number}
                     </span>
-                    <span className="text-xs text-neutral-600">—</span>
+                    <span className="text-xs text-neutral-600">{group.prevBest ?? "—"}</span>
                     <input
                       type="number"
                       placeholder="0"
@@ -463,12 +535,49 @@ export default function WorkoutPage() {
       <div className="max-w-lg mx-auto px-4 pt-6">
         <h1 className="text-xl font-bold mb-4">Workout</h1>
 
-        <button
-          onClick={startWorkout}
-          className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-2xl py-5 text-lg transition-colors mb-6"
-        >
-          Start Empty Workout
-        </button>
+        {/* Start Options */}
+        <div className="flex flex-col gap-3 mb-6">
+          <button
+            onClick={startWorkout}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-2xl py-5 text-lg transition-colors"
+          >
+            Start Empty Workout
+          </button>
+
+          {myRegimes.length > 0 ? (
+            <button
+              onClick={() => setShowRegimePicker(true)}
+              className="w-full border-2 border-amber-500/30 hover:border-amber-500/60 bg-amber-500/5 rounded-2xl py-4 text-amber-400 font-semibold transition-colors text-sm"
+            >
+              📋 Start from Regime
+            </button>
+          ) : (
+            <Link
+              href="/regimes"
+              className="w-full border-2 border-dashed border-neutral-700 hover:border-amber-500/40 rounded-2xl py-4 text-neutral-400 hover:text-amber-400 transition-colors text-sm text-center block"
+            >
+              📋 Create a Regime to quick-start workouts
+            </Link>
+          )}
+        </div>
+
+        {/* Quick Stats */}
+        {history.length > 0 && (
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="bg-[#141414] rounded-xl border border-neutral-800 p-3 text-center">
+              <p className="text-lg font-bold text-amber-400">{history.length}</p>
+              <p className="text-[9px] text-neutral-500">Total</p>
+            </div>
+            <div className="bg-[#141414] rounded-xl border border-neutral-800 p-3 text-center">
+              <p className="text-lg font-bold text-green-400">{getThisWeekCount(history)}</p>
+              <p className="text-[9px] text-neutral-500">This Week</p>
+            </div>
+            <div className="bg-[#141414] rounded-xl border border-neutral-800 p-3 text-center">
+              <p className="text-lg font-bold text-blue-400">{formatTime(Math.round(history.reduce((s, w) => s + w.duration_seconds, 0) / Math.max(history.length, 1)))}</p>
+              <p className="text-[9px] text-neutral-500">Avg Time</p>
+            </div>
+          </div>
+        )}
 
         {/* History */}
         <h2 className="text-sm font-semibold text-neutral-400 mb-3 uppercase tracking-wider">Recent Workouts</h2>
@@ -497,6 +606,42 @@ export default function WorkoutPage() {
           </div>
         )}
       </div>
+
+      {/* Regime Picker Modal */}
+      {showRegimePicker && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 border border-neutral-800 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">Pick a Regime Day</h2>
+              <button onClick={() => setShowRegimePicker(false)} className="text-neutral-500 text-lg">✕</button>
+            </div>
+            {myRegimes.map(regime => (
+              <div key={regime.id} className="mb-4">
+                <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">{regime.name}</p>
+                <div className="flex flex-col gap-2">
+                  {regime.days.map((day, di) => (
+                    <button
+                      key={di}
+                      onClick={() => startFromRegimeDay(regime, di)}
+                      className="flex items-center justify-between bg-neutral-900 hover:bg-neutral-800 rounded-xl p-3 text-left transition-colors"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">Day {di + 1}: {day.name}</p>
+                        <p className="text-[10px] text-neutral-500">{day.exercises.length} exercises</p>
+                      </div>
+                      <span className="text-amber-500 text-lg">→</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {myRegimes.length === 0 && (
+              <p className="text-neutral-500 text-sm text-center py-6">No regimes yet. <Link href="/regimes" className="text-amber-400 underline">Create one →</Link></p>
+            )}
+          </div>
+        </div>
+      )}
+
       <Nav />
     </div>
   );
@@ -571,4 +716,13 @@ function ExercisePickerModal({
       </div>
     </div>
   );
+}
+
+function getThisWeekCount(history: SavedWorkout[]): number {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - dayOfWeek);
+  weekStart.setHours(0, 0, 0, 0);
+  return history.filter(w => new Date(w.date + "T00:00:00") >= weekStart).length;
 }

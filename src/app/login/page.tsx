@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -29,6 +29,14 @@ export default function LoginPage() {
         setError(error.message);
         setLoading(false);
         return;
+      }
+      // Auto-grant beta tester badge
+      if (authData.user) {
+        await supabase.from("user_badges").upsert({
+          user_id: authData.user.id,
+          badge_key: "beta_tester",
+          earned_at: new Date().toISOString(),
+        }, { onConflict: "user_id,badge_key" }).then(() => {});
       }
       window.location.href = "/onboarding";
     } else {
