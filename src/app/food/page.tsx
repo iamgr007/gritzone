@@ -148,23 +148,61 @@ export default function FoodPage() {
     closeSearch();
   }
 
-  async function addAIFood(item: AIFoodItem, meal: MealType) {
-    if (!user) return;
+  async function addAIFood(item: AIFoodItem, meal: MealType): Promise<boolean> {
+    if (!user) return false;
     const entry = {
       user_id: user.id, date, meal_type: meal,
       food_name: item.name, quantity: item.quantity, unit: item.unit,
       calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat,
     };
-    const { data } = await supabase.from("food_logs").insert(entry).select("*").single();
+    const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
+    if (error) { showToast(`Failed to log: ${error.message}`); return false; }
     if (data) setLogs((prev) => [...prev, data as FoodLog]);
+    return true;
   }
 
   async function addAllAIFoods() {
     if (!scanResults || !scanMeal) return;
+    let okCount = 0;
     for (const item of scanResults) {
-      await addAIFood(item, scanMeal);
+      const ok = await addAIFood(item, scanMeal);
+      if (ok) okCount++;
     }
+    if (okCount > 0) showToast(`✓ Added ${okCount} item${okCount !== 1 ? "s" : ""} to ${MEAL_CONFIG.find(m => m.type === scanMeal)?.label}`);
     closeScan();
+  }
+
+  // Edit scanned items before saving
+  function updateScanItem(idx: number, field: keyof AIFoodItem, value: string | number) {
+    if (!scanResults) return;
+    const updated = [...scanResults];
+    const item = { ...updated[idx] };
+    if (field === "quantity") {
+      const newQty = parseFloat(value as string) || 0;
+      const ratio = item.quantity > 0 ? newQty / item.quantity : 1;
+      item.quantity = newQty;
+      // Scale macros proportionally
+      item.calories = Math.round(item.calories * ratio);
+      item.protein = Math.round(item.protein * ratio * 10) / 10;
+      item.carbs = Math.round(item.carbs * ratio * 10) / 10;
+      item.fat = Math.round(item.fat * ratio * 10) / 10;
+    } else {
+      (item as unknown as Record<string, unknown>)[field] = value;
+    }
+    updated[idx] = item;
+    setScanResults(updated);
+  }
+
+  function removeScanItem(idx: number) {
+    if (!scanResults) return;
+    const updated = scanResults.filter((_, i) => i !== idx);
+    if (updated.length === 0) { closeScan(); return; }
+    setScanResults(updated);
+  }
+
+  function addBlankScanItem() {
+    if (!scanResults) return;
+    setScanResults([...scanResults, { name: "", quantity: 100, unit: "g", calories: 0, protein: 0, carbs: 0, fat: 0 }]);
   }
 
   async function removeFood(id: string) {
@@ -564,44 +602,111 @@ export default function FoodPage() {
       {/* ===== AI SCAN RESULTS MODAL ===== */}
       {(scanResults || scanError) && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 border border-neutral-800 max-h-[80vh] overflow-y-auto">
+          <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-neutral-800 max-h-[90vh] flex flex-col">
             {scanError ? (
-              <>
+              <div className="p-5">
                 <h2 className="text-lg font-bold mb-2 text-red-400">Scan Failed</h2>
                 <p className="text-sm text-neutral-400 mb-4">{scanError}</p>
                 <button onClick={closeScan} className="w-full bg-neutral-800 text-neutral-300 font-medium rounded-xl py-3">Close</button>
-              </>
+              </div>
             ) : (
               <>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">🤖</span>
-                  <h2 className="text-lg font-bold">AI Found {scanResults!.length} Item{scanResults!.length !== 1 ? "s" : ""}</h2>
+                <div className="p-5 pb-3 border-b border-neutral-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">🤖</span>
+                    <h2 className="text-lg font-bold">AI Found {scanResults!.length} Item{scanResults!.length !== 1 ? "s" : ""}</h2>
+                  </div>
+                  <p className="text-xs text-neutral-500">Edit, delete, or add items — then log to {MEAL_CONFIG.find((m) => m.type === scanMeal)?.label}</p>
                 </div>
-                <p className="text-xs text-neutral-500 mb-4">Adding to {MEAL_CONFIG.find((m) => m.type === scanMeal)?.label}</p>
 
-                <div className="flex flex-col gap-2 mb-4">
-                  {scanResults!.map((item, i) => (
-                    <div key={i} className="bg-neutral-900 rounded-xl p-3 flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.name}</p>
-                        <p className="text-[10px] text-neutral-500">
-                          {item.quantity}{item.unit} ·{" "}
-                          <span className="text-blue-400">P:{item.protein}g</span>{" "}
-                          <span className="text-amber-300">C:{item.carbs}g</span>{" "}
-                          <span className="text-pink-400">F:{item.fat}g</span>
-                        </p>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="flex flex-col gap-3">
+                    {scanResults!.map((item, i) => {
+                      const totalCals = scanResults!.reduce((s, it) => s + it.calories, 0);
+                      return (
+                        <div key={i} className="bg-neutral-900 rounded-xl p-3">
+                          <div className="flex items-start gap-2 mb-2">
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) => updateScanItem(i, "name", e.target.value)}
+                              placeholder="Food name"
+                              className="flex-1 !bg-neutral-800 !border-neutral-700 !py-2 !px-3 text-sm"
+                            />
+                            <button
+                              onClick={() => removeScanItem(i)}
+                              className="w-9 h-9 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg flex items-center justify-center flex-shrink-0"
+                              title="Remove"
+                            >✕</button>
+                          </div>
+                          <div className="grid grid-cols-[1fr_60px_80px] gap-2 items-center">
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateScanItem(i, "quantity", e.target.value)}
+                              className="!bg-neutral-800 !border-neutral-700 !py-2 text-center text-sm"
+                            />
+                            <select
+                              value={item.unit}
+                              onChange={(e) => updateScanItem(i, "unit", e.target.value)}
+                              className="bg-neutral-800 border border-neutral-700 rounded-lg py-2 text-sm text-center"
+                            >
+                              {["g","ml","piece","cup","bowl","plate","glass","tbsp","slice"].map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                            <div className="text-right">
+                              <p className="text-amber-400 font-bold">{item.calories}</p>
+                              <p className="text-[9px] text-neutral-500">cal</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 mt-2 text-[10px]">
+                            <span className="text-blue-400">P: {item.protein}g</span>
+                            <span className="text-amber-300">C: {item.carbs}g</span>
+                            <span className="text-pink-400">F: {item.fat}g</span>
+                            {totalCals > 0 && <span className="text-neutral-600 ml-auto">{Math.round((item.calories / totalCals) * 100)}%</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <button
+                      onClick={addBlankScanItem}
+                      className="w-full border-2 border-dashed border-neutral-700 hover:border-amber-500/40 rounded-xl py-3 text-neutral-400 hover:text-amber-400 transition-colors text-sm"
+                    >
+                      + Add Another Item
+                    </button>
+                  </div>
+
+                  {/* Total */}
+                  {scanResults!.length > 0 && (
+                    <div className="mt-4 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
+                      <div>
+                        <p className="text-amber-400 font-bold">{scanResults!.reduce((s, i) => s + i.calories, 0)}</p>
+                        <p className="text-[9px] text-neutral-500">Cal</p>
                       </div>
-                      <div className="flex items-center gap-2 ml-2">
-                        <span className="text-amber-400 font-semibold text-sm">{item.calories}</span>
-                        <button onClick={() => addAIFood(item, scanMeal!)} className="w-7 h-7 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center text-sm">+</button>
+                      <div>
+                        <p className="text-blue-400 font-bold">{scanResults!.reduce((s, i) => s + i.protein, 0).toFixed(1)}g</p>
+                        <p className="text-[9px] text-neutral-500">Protein</p>
+                      </div>
+                      <div>
+                        <p className="text-amber-300 font-bold">{scanResults!.reduce((s, i) => s + i.carbs, 0).toFixed(1)}g</p>
+                        <p className="text-[9px] text-neutral-500">Carbs</p>
+                      </div>
+                      <div>
+                        <p className="text-pink-400 font-bold">{scanResults!.reduce((s, i) => s + i.fat, 0).toFixed(1)}g</p>
+                        <p className="text-[9px] text-neutral-500">Fat</p>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
 
-                <div className="flex gap-3">
-                  <button onClick={addAllAIFoods} className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-xl py-3 transition-colors">Add All Items</button>
-                  <button onClick={closeScan} className="px-4 bg-neutral-800 text-neutral-400 rounded-xl py-3">Cancel</button>
+                <div className="p-4 border-t border-neutral-800 flex gap-3">
+                  <button onClick={closeScan} className="px-4 bg-neutral-800 text-neutral-400 rounded-xl py-3 text-sm">Cancel</button>
+                  <button
+                    onClick={addAllAIFoods}
+                    disabled={scanResults!.length === 0 || scanResults!.some(i => !i.name.trim())}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-bold rounded-xl py-3 transition-colors"
+                  >
+                    Log All {scanResults!.length} Item{scanResults!.length !== 1 ? "s" : ""}
+                  </button>
                 </div>
               </>
             )}
@@ -612,7 +717,7 @@ export default function FoodPage() {
       {/* Error Toast */}
       {toast && (
         <div className="fixed top-4 left-4 right-4 z-[60] max-w-lg mx-auto">
-          <div className="bg-red-500/90 text-white text-sm rounded-xl px-4 py-3 flex items-center justify-between shadow-lg">
+          <div className={`text-white text-sm rounded-xl px-4 py-3 flex items-center justify-between shadow-lg ${toast.startsWith("✓") ? "bg-green-500/90" : "bg-red-500/90"}`}>
             <span>{toast}</span>
             <button onClick={() => setToast(null)} className="ml-2 text-white/70 hover:text-white">✕</button>
           </div>

@@ -39,15 +39,26 @@ export default function OnboardingPage() {
     if (idx > 0) setStep(steps[idx - 1]);
   }
 
+  const [saving, setSaving] = useState(false);
+
   async function finish() {
-    // Save quiz data to profile
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const bmi = calcBMI(data.height, data.weight);
-      await supabase.from("profiles").update({
-        bio: JSON.stringify({ quiz: data, bmi }),
-      }).eq("id", user.id);
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const bmi = calcBMI(data.height, data.weight);
+        // Upsert so it works whether profile row exists or not
+        const { error } = await supabase.from("profiles").upsert({
+          id: user.id,
+          username: user.email?.split("@")[0] || "user",
+          bio: JSON.stringify({ quiz: data, bmi, completedAt: new Date().toISOString() }),
+        }, { onConflict: "id" });
+        if (error) console.warn("Profile save error:", error.message);
+      }
+    } catch (e) {
+      console.warn("Onboarding finish error:", e);
     }
+    // Always redirect even if save fails — user can retry from settings
     window.location.href = "/dashboard";
   }
 
@@ -261,8 +272,8 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            <button onClick={finish} className="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-semibold rounded-xl py-3 transition-colors">
-              Continue with Free →
+            <button onClick={finish} disabled={saving} className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-black font-bold rounded-xl py-3 transition-colors">
+              {saving ? "Saving..." : "Continue to Dashboard →"}
             </button>
           </div>
         )}
