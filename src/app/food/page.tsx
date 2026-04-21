@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import { incrementQuestProgress } from "@/lib/quests-client";
 import { searchFoods, getPopularFoods, calcNutrition, type FoodItem } from "@/lib/food-data";
 
 type MealType = "breakfast" | "lunch" | "dinner" | "snack";
@@ -117,7 +118,7 @@ export default function FoodPage() {
     };
     const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
     if (error) { showToast(`Failed to log: ${error.message}`); return; }
-    if (data) setLogs((prev) => [...prev, data as FoodLog]);
+    if (data) { setLogs((prev) => [...prev, data as FoodLog]); incrementQuestProgress(user, "food_log").catch(() => {}); }
     closeSearch();
   }
 
@@ -130,7 +131,7 @@ export default function FoodPage() {
     };
     const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
     if (error) { showToast(`Failed to log: ${error.message}`); return; }
-    if (data) setLogs((prev) => [...prev, data as FoodLog]);
+    if (data) { setLogs((prev) => [...prev, data as FoodLog]); incrementQuestProgress(user, "food_log").catch(() => {}); }
     closeSearch();
   }
 
@@ -144,7 +145,7 @@ export default function FoodPage() {
     };
     const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
     if (error) { showToast(`Failed to log: ${error.message}`); return; }
-    if (data) setLogs((prev) => [...prev, data as FoodLog]);
+    if (data) { setLogs((prev) => [...prev, data as FoodLog]); incrementQuestProgress(user, "food_log").catch(() => {}); }
     closeSearch();
   }
 
@@ -157,7 +158,7 @@ export default function FoodPage() {
     };
     const { data, error } = await supabase.from("food_logs").insert(entry).select("*").single();
     if (error) { showToast(`Failed to log: ${error.message}`); return false; }
-    if (data) setLogs((prev) => [...prev, data as FoodLog]);
+    if (data) { setLogs((prev) => [...prev, data as FoodLog]); incrementQuestProgress(user, "food_log").catch(() => {}); }
     return true;
   }
 

@@ -7,6 +7,7 @@ import Nav from "@/components/Nav";
 import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
 import { celebrate, haptic } from "@/lib/celebrate";
+import { incrementQuestProgress } from "@/lib/quests-client";
 
 type WorkoutSet = {
   exercise: Exercise;
@@ -285,6 +286,7 @@ export default function WorkoutPage() {
     setWorkoutPhoto(null);
     setPhotoPreview(null);
     celebrate(); // 🎉 on workout finish
+    incrementQuestProgress(user, "workout").catch(() => {});
 
     // Refresh history
     const { data } = await supabase

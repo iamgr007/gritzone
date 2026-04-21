@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import type { CheckIn } from "@/lib/types";
 import { celebrate, haptic } from "@/lib/celebrate";
+import { incrementQuestProgress } from "@/lib/quests-client";
 
 function todayStr() {
   return new Date().toISOString().split("T")[0];
@@ -113,6 +114,8 @@ export default function CheckInPage() {
       if (data) {
         setExistingId(data.id);
         celebrate(); // confetti + haptic for first check-in of the day
+        incrementQuestProgress(user, "checkin").catch(() => {});
+        incrementQuestProgress(user, "streak_day").catch(() => {});
       }
     }
 

@@ -81,6 +81,14 @@ export default function DashboardPage() {
     load();
   }, [user]);
 
+  // Register for push notifications on native platform (no-op on web)
+  useEffect(() => {
+    if (!user) return;
+    import("@/lib/push").then(({ registerPush }) => {
+      registerPush(user).catch(() => {});
+    });
+  }, [user]);
+
   // Load earned badges
   useEffect(() => {
     if (!user) return;
@@ -231,6 +239,24 @@ export default function DashboardPage() {
             {levelInfo.currentXp} / {levelInfo.nextXp} to next level
           </p>
         </Link>
+
+        {/* Quick Actions: Quests + Rewards */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <Link href="/quests" className="bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-amber-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
+            <span className="text-2xl">🎯</span>
+            <div>
+              <p className="text-sm font-bold">Quests</p>
+              <p className="text-[10px] text-neutral-500">Earn XP</p>
+            </div>
+          </Link>
+          <Link href="/rewards" className="bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-amber-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
+            <span className="text-2xl">🎁</span>
+            <div>
+              <p className="text-sm font-bold">Rewards</p>
+              <p className="text-[10px] text-neutral-500">Brand perks</p>
+            </div>
+          </Link>
+        </div>
 
         {/* Beta Tester Badge Banner */}
         {earnedBadges.some(b => b.badge_key === "beta_tester") && (() => {
