@@ -49,6 +49,14 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+      // Ensure profile row exists (might be missing if onboarding was skipped)
+      const { data: { user: loginUser } } = await supabase.auth.getUser();
+      if (loginUser) {
+        await supabase.from("profiles").upsert({
+          id: loginUser.id,
+          username: loginUser.user_metadata?.display_name || loginUser.email?.split("@")[0] || "user",
+        }, { onConflict: "id", ignoreDuplicates: true });
+      }
       window.location.href = "/dashboard";
     }
   }

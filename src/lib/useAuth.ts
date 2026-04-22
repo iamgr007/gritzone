@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, ensureProfile } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
 export function useAuth() {
@@ -14,6 +14,8 @@ export function useAuth() {
         window.location.href = "/login";
         return;
       }
+      // Ensure profile exists (fixes FK violations if onboarding was skipped)
+      ensureProfile(data.user);
       setUser(data.user);
       setLoading(false);
     });
