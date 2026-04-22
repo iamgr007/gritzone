@@ -15,7 +15,7 @@ export default function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[#141414] border-t border-neutral-800 z-50 safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-[#141414] border-t border-neutral-800 z-30 safe-bottom">
       <div className="max-w-lg mx-auto flex justify-around items-center py-2 px-1">
         {navItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
