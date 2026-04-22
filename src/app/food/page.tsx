@@ -603,8 +603,8 @@ export default function FoodPage() {
 
       {/* ===== AI SCAN RESULTS MODAL ===== */}
       {(scanResults || scanError) && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-neutral-800 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center" style={{ height: "100dvh" }}>
+          <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-neutral-800 flex flex-col" style={{ maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px))" }}>
             {scanError ? (
               <div className="p-5">
                 <h2 className="text-lg font-bold mb-2 text-red-400">Scan Failed</h2>
@@ -700,7 +700,7 @@ export default function FoodPage() {
                   )}
                 </div>
 
-                <div className="p-4 border-t border-neutral-800 flex gap-3 safe-bottom">
+                <div className="sticky bottom-0 p-4 border-t border-neutral-800 flex gap-3 bg-[#141414] pb-[max(1rem,env(safe-area-inset-bottom))]">
                   <button onClick={closeScan} className="px-4 bg-neutral-800 text-neutral-400 rounded-xl py-3 text-sm">Cancel</button>
                   <button
                     onClick={addAllAIFoods}
