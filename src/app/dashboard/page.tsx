@@ -256,6 +256,27 @@ export default function DashboardPage() {
               <p className="text-[10px] text-neutral-500">Brand perks</p>
             </div>
           </Link>
+          <Link href="/habits" className="bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-emerald-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="text-sm font-bold">Habits</p>
+              <p className="text-[10px] text-neutral-500">Daily tracker</p>
+            </div>
+          </Link>
+          <Link href="/ranks" className="bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-cyan-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
+            <span className="text-2xl">🏅</span>
+            <div>
+              <p className="text-sm font-bold">Ranks</p>
+              <p className="text-[10px] text-neutral-500">Leaderboard</p>
+            </div>
+          </Link>
+          <Link href="/ebooks" className="col-span-2 bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-amber-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
+            <span className="text-2xl">📚</span>
+            <div>
+              <p className="text-sm font-bold">Free Guides</p>
+              <p className="text-[10px] text-neutral-500">TRANSFORM · RESET · FUEL · IGNITE · more</p>
+            </div>
+          </Link>
         </div>
 
         {/* Beta Tester Badge Banner */}

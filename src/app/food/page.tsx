@@ -166,6 +166,7 @@ export default function FoodPage() {
     if (!scanResults || !scanMeal) return;
     let okCount = 0;
     for (const item of scanResults) {
+      if (!item.name.trim()) continue; // skip empty-named entries
       const ok = await addAIFood(item, scanMeal);
       if (ok) okCount++;
     }
@@ -699,14 +700,14 @@ export default function FoodPage() {
                   )}
                 </div>
 
-                <div className="p-4 border-t border-neutral-800 flex gap-3">
+                <div className="p-4 border-t border-neutral-800 flex gap-3 safe-bottom">
                   <button onClick={closeScan} className="px-4 bg-neutral-800 text-neutral-400 rounded-xl py-3 text-sm">Cancel</button>
                   <button
                     onClick={addAllAIFoods}
-                    disabled={scanResults!.length === 0 || scanResults!.some(i => !i.name.trim())}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-bold rounded-xl py-3 transition-colors"
+                    disabled={scanResults!.filter(i => i.name.trim()).length === 0}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-bold rounded-xl py-3 transition-colors btn-glow"
                   >
-                    Log All {scanResults!.length} Item{scanResults!.length !== 1 ? "s" : ""}
+                    ✅ Log {scanResults!.filter(i => i.name.trim()).length} Item{scanResults!.filter(i => i.name.trim()).length !== 1 ? "s" : ""} to {MEAL_CONFIG.find((m) => m.type === scanMeal)?.label}
                   </button>
                 </div>
               </>

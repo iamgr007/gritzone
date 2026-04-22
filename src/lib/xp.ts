@@ -68,3 +68,38 @@ export function formatXP(xp: number): string {
   if (xp >= 10000) return `${(xp / 1000).toFixed(1)}K`;
   return xp.toLocaleString("en-IN");
 }
+
+// ============================================================
+// RANKED TIERS — public-facing brackets (like a ladder)
+// Groups users into competitive tiers regardless of exact level.
+// ============================================================
+export type RankTier = {
+  key: string;
+  name: string;
+  icon: string;
+  color: string;      // tailwind hue
+  gradient: string;   // tailwind gradient classes
+  minLevel: number;
+  tagline: string;
+};
+
+export const RANKS: RankTier[] = [
+  { key: "bronze",    name: "Bronze",    icon: "🥉", color: "orange",  gradient: "from-orange-700 to-amber-800", minLevel: 1,  tagline: "Everyone starts here." },
+  { key: "silver",    name: "Silver",    icon: "🥈", color: "neutral", gradient: "from-neutral-400 to-neutral-600", minLevel: 4,  tagline: "The habit is forming." },
+  { key: "gold",      name: "Gold",      icon: "🥇", color: "yellow",  gradient: "from-yellow-400 to-amber-600", minLevel: 7,  tagline: "You've earned this." },
+  { key: "platinum",  name: "Platinum",  icon: "💎", color: "cyan",    gradient: "from-cyan-400 to-blue-500", minLevel: 10, tagline: "Rare air. Keep pushing." },
+  { key: "diamond",   name: "Diamond",   icon: "💠", color: "sky",     gradient: "from-sky-400 to-indigo-500", minLevel: 13, tagline: "Built different." },
+  { key: "obsidian",  name: "Obsidian",  icon: "🖤", color: "purple",  gradient: "from-purple-600 to-black",   minLevel: 16, tagline: "The 1% of the 1%." },
+  { key: "grit",      name: "GRIT",      icon: "🔱", color: "amber",   gradient: "from-amber-300 to-orange-500", minLevel: 19, tagline: "Unbreakable." },
+];
+
+export function getRank(level: number): RankTier {
+  let r = RANKS[0];
+  for (const tier of RANKS) if (level >= tier.minLevel) r = tier;
+  return r;
+}
+
+export function nextRank(level: number): RankTier | null {
+  for (const tier of RANKS) if (level < tier.minLevel) return tier;
+  return null;
+}

@@ -9,12 +9,17 @@ import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/
 import { celebrate, haptic } from "@/lib/celebrate";
 import { incrementQuestProgress } from "@/lib/quests-client";
 
+type SetType = "normal" | "warmup" | "drop" | "failure" | "amrap";
+
 type WorkoutSet = {
   exercise: Exercise;
   set_number: number;
   weight_kg: string;
   reps: string;
-  is_warmup: boolean;
+  target_reps?: string;   // e.g. "8-12" from regime
+  suggested_kg?: string;  // progressive overload hint (prev best + 2.5)
+  set_type: SetType;
+  is_warmup: boolean;     // kept for back-compat
   done: boolean;
 };
 
@@ -22,6 +27,7 @@ type ExerciseGroup = {
   exercise: Exercise;
   sets: WorkoutSet[];
   prevBest?: string; // e.g. "60kg × 10"
+  restSeconds?: number; // user-set rest time per exercise
 };
 
 type SavedWorkout = {
@@ -68,6 +74,13 @@ export default function WorkoutPage() {
   const [myRegimes, setMyRegimes] = useState<Regime[]>([]);
   const [prevSets, setPrevSets] = useState<PrevSet[]>([]);
 
+  // Rest timer state
+  const [restRemaining, setRestRemaining] = useState(0); // seconds left
+  const [restTotal, setRestTotal] = useState(90);
+  const [showRestConfig, setShowRestConfig] = useState(false);
+  const [defaultRest, setDefaultRest] = useState(90);
+  const restIntervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
   // Load from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("gritzone_active_workout");
@@ -86,6 +99,9 @@ export default function WorkoutPage() {
       const regimeData = localStorage.getItem("gritzone_regimes");
       if (regimeData) setMyRegimes(JSON.parse(regimeData));
     } catch {}
+    // Load user's default rest time
+    const savedRest = localStorage.getItem("gritzone_default_rest");
+    if (savedRest) setDefaultRest(parseInt(savedRest) || 90);
   }, []);
 
   // Load previous workout sets for "Prev" column
@@ -143,6 +159,25 @@ export default function WorkoutPage() {
     setNotes("");
   }
 
+  function parseRestSeconds(rest: string): number {
+    // "90s", "60-90s", "1min", "1-2min"
+    const m = rest.match(/(\d+)(?:-(\d+))?\s*(s|sec|min|m)?/i);
+    if (!m) return defaultRest;
+    const a = parseInt(m[1]);
+    const b = m[2] ? parseInt(m[2]) : a;
+    const avg = (a + b) / 2;
+    const unit = (m[3] || "s").toLowerCase();
+    return unit.startsWith("m") ? avg * 60 : avg;
+  }
+
+  function suggestedWeightFromPrev(exerciseName: string): string {
+    const matches = prevSets.filter(s => s.exercise_name === exerciseName);
+    if (matches.length === 0) return "";
+    const best = matches.reduce((a, b) => (a.weight_kg * a.reps > b.weight_kg * b.reps ? a : b));
+    // Progressive overload: +2.5kg if last best was done for target reps, else stay
+    return String(best.weight_kg);
+  }
+
   function startFromRegimeDay(regime: Regime, dayIdx: number) {
     const day = regime.days[dayIdx];
     startTimeRef.current = Date.now();
@@ -154,15 +189,20 @@ export default function WorkoutPage() {
       .filter(e => e.exercise)
       .map(e => {
         const best = getPrevBest(e.exercise.name);
+        const suggestedKg = suggestedWeightFromPrev(e.exercise.name);
+        const restSec = parseRestSeconds(e.rest);
         const sets: WorkoutSet[] = Array.from({ length: e.sets }, (_, i) => ({
           exercise: e.exercise,
           set_number: i + 1,
           weight_kg: "",
           reps: "",
+          target_reps: e.reps,
+          suggested_kg: suggestedKg,
+          set_type: "normal",
           is_warmup: false,
           done: false,
         }));
-        return { exercise: e.exercise, sets, prevBest: best };
+        return { exercise: e.exercise, sets, prevBest: best, restSeconds: restSec };
       });
 
     setExercises(groups);
@@ -180,12 +220,14 @@ export default function WorkoutPage() {
 
   function addExercise(ex: Exercise) {
     const best = getPrevBest(ex.name);
+    const suggestedKg = suggestedWeightFromPrev(ex.name);
     setExercises((prev) => [
       ...prev,
       {
         exercise: ex,
-        sets: [{ exercise: ex, set_number: 1, weight_kg: "", reps: "", is_warmup: false, done: false }],
+        sets: [{ exercise: ex, set_number: 1, weight_kg: "", reps: "", suggested_kg: suggestedKg, set_type: "normal", is_warmup: false, done: false }],
         prevBest: best,
+        restSeconds: defaultRest,
       },
     ]);
     setShowExercisePicker(false);
@@ -203,6 +245,9 @@ export default function WorkoutPage() {
         set_number: group.sets.length + 1,
         weight_kg: lastSet?.weight_kg || "",
         reps: lastSet?.reps || "",
+        target_reps: lastSet?.target_reps,
+        suggested_kg: lastSet?.suggested_kg,
+        set_type: "normal",
         is_warmup: false,
         done: false,
       });
@@ -212,15 +257,66 @@ export default function WorkoutPage() {
   }
 
   function updateSet(exIdx: number, setIdx: number, field: keyof WorkoutSet, value: string | boolean) {
-    if (field === "done" && value === true) haptic("medium"); // vibrate when set completed
+    if (field === "done" && value === true) {
+      haptic("medium");
+      // Start rest timer using exercise's restSeconds or default
+      const restSec = exercises[exIdx]?.restSeconds || defaultRest;
+      startRest(restSec);
+    }
     setExercises((prev) => {
       const copy = [...prev];
       const group = { ...copy[exIdx], sets: [...copy[exIdx].sets] };
-      group.sets[setIdx] = { ...group.sets[setIdx], [field]: value };
+      const updated = { ...group.sets[setIdx], [field]: value };
+      // Sync is_warmup with set_type for back-compat
+      if (field === "set_type") updated.is_warmup = value === "warmup";
+      group.sets[setIdx] = updated;
       copy[exIdx] = group;
       return copy;
     });
   }
+
+  function startRest(seconds: number) {
+    if (restIntervalRef.current) clearInterval(restIntervalRef.current);
+    setRestTotal(seconds);
+    setRestRemaining(seconds);
+    restIntervalRef.current = setInterval(() => {
+      setRestRemaining((r) => {
+        if (r <= 1) {
+          clearInterval(restIntervalRef.current);
+          haptic("success");
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+  }
+
+  function stopRest() {
+    if (restIntervalRef.current) clearInterval(restIntervalRef.current);
+    setRestRemaining(0);
+  }
+
+  function adjustRest(delta: number) {
+    setRestRemaining((r) => Math.max(0, r + delta));
+    setRestTotal((t) => Math.max(0, t + delta));
+  }
+
+  function setUserDefaultRest(seconds: number) {
+    setDefaultRest(seconds);
+    localStorage.setItem("gritzone_default_rest", String(seconds));
+    // Apply to all existing exercises that don't have a custom rest
+    setExercises(prev => prev.map(g => g.restSeconds ? g : { ...g, restSeconds: seconds }));
+  }
+
+  function setExerciseRest(exIdx: number, seconds: number) {
+    setExercises(prev => {
+      const copy = [...prev];
+      copy[exIdx] = { ...copy[exIdx], restSeconds: seconds };
+      return copy;
+    });
+  }
+
+  useEffect(() => () => { if (restIntervalRef.current) clearInterval(restIntervalRef.current); }, []);
 
   function removeExercise(exIdx: number) {
     setExercises((prev) => prev.filter((_, i) => i !== exIdx));
@@ -271,7 +367,8 @@ export default function WorkoutPage() {
           set_number: s.set_number,
           weight_kg: parseFloat(s.weight_kg) || 0,
           reps: parseInt(s.reps) || 0,
-          is_warmup: s.is_warmup,
+          is_warmup: s.set_type === "warmup",
+          set_type: s.set_type,
         }))
       );
       if (allSets.length > 0) {
@@ -342,7 +439,12 @@ export default function WorkoutPage() {
                 {totalSets} sets · {Math.round(totalVolume).toLocaleString()} kg vol
               </p>
             </div>
-            <div className="text-right">
+            <div className="text-right flex items-center gap-2">
+              <button
+                onClick={() => setShowRestConfig(true)}
+                className="text-[10px] bg-neutral-900 border border-neutral-800 hover:border-amber-500/30 px-2 py-1 rounded-lg text-neutral-400"
+                title="Default rest time"
+              >⏱ {defaultRest}s</button>
               <p className="text-amber-400 font-mono text-xl font-bold">{formatTime(elapsed)}</p>
             </div>
           </div>
@@ -352,60 +454,88 @@ export default function WorkoutPage() {
             {exercises.map((group, exIdx) => (
               <div key={exIdx} className="bg-[#141414] rounded-2xl border border-neutral-800 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
-                  <div>
-                    <p className="font-semibold text-sm text-amber-400">{group.exercise.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm text-amber-400 truncate">{group.exercise.name}</p>
                     <p className="text-[10px] text-neutral-500">{group.exercise.muscle}</p>
                   </div>
-                  <button onClick={() => removeExercise(exIdx)} className="text-neutral-600 hover:text-red-400 text-xs p-1">✕</button>
+                  <button
+                    onClick={() => setExerciseRest(exIdx, ((group.restSeconds || defaultRest) + 30) % 301 || 30)}
+                    className="text-[10px] bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-lg text-neutral-400"
+                    title="Tap to cycle rest time"
+                  >⏱ {group.restSeconds || defaultRest}s</button>
+                  <button onClick={() => removeExercise(exIdx)} className="text-neutral-600 hover:text-red-400 text-xs p-1 ml-2">✕</button>
                 </div>
 
                 {/* Set Header */}
-                <div className="grid grid-cols-[40px_1fr_1fr_1fr_40px] gap-1 px-3 py-2 text-[10px] text-neutral-500 uppercase">
+                <div className="grid grid-cols-[32px_60px_1fr_1fr_36px] gap-1 px-3 py-2 text-[10px] text-neutral-500 uppercase">
                   <span>Set</span>
-                  <span>Prev</span>
+                  <span>Type</span>
                   <span>kg</span>
                   <span>Reps</span>
                   <span></span>
                 </div>
 
                 {/* Sets */}
-                {group.sets.map((set, setIdx) => (
-                  <div
-                    key={setIdx}
-                    className={`grid grid-cols-[40px_1fr_1fr_1fr_40px] gap-1 px-3 py-1.5 items-center ${
-                      set.done ? "bg-amber-500/5" : ""
-                    }`}
-                  >
-                    <span className={`text-xs font-medium ${set.is_warmup ? "text-neutral-500" : "text-neutral-300"}`}>
-                      {set.is_warmup ? "W" : set.set_number}
-                    </span>
-                    <span className="text-xs text-neutral-600">{group.prevBest ?? "—"}</span>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={set.weight_kg}
-                      onChange={(e) => updateSet(exIdx, setIdx, "weight_kg", e.target.value)}
-                      className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm"
-                    />
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={set.reps}
-                      onChange={(e) => updateSet(exIdx, setIdx, "reps", e.target.value)}
-                      className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm"
-                    />
-                    <button
-                      onClick={() => updateSet(exIdx, setIdx, "done", !set.done)}
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors ${
-                        set.done
-                          ? "bg-amber-500 text-black"
-                          : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700"
+                {group.sets.map((set, setIdx) => {
+                  const typeLabel: Record<SetType, string> = { normal: "—", warmup: "W", drop: "D", failure: "F", amrap: "A" };
+                  const typeColor: Record<SetType, string> = { normal: "text-neutral-300", warmup: "text-neutral-500", drop: "text-purple-400", failure: "text-red-400", amrap: "text-amber-400" };
+                  return (
+                    <div
+                      key={setIdx}
+                      className={`grid grid-cols-[32px_60px_1fr_1fr_36px] gap-1 px-3 py-1.5 items-center ${
+                        set.done ? "bg-amber-500/5" : ""
                       }`}
                     >
-                      ✓
-                    </button>
+                      <span className={`text-xs font-medium ${typeColor[set.set_type]}`}>
+                        {set.set_type === "normal" ? set.set_number : typeLabel[set.set_type]}
+                      </span>
+                      <select
+                        value={set.set_type}
+                        onChange={(e) => updateSet(exIdx, setIdx, "set_type", e.target.value)}
+                        className="bg-neutral-900 border border-neutral-800 rounded-md text-[10px] text-neutral-400 px-1 py-1 w-full"
+                      >
+                        <option value="normal">Work</option>
+                        <option value="warmup">Warm-up</option>
+                        <option value="drop">Drop</option>
+                        <option value="failure">Failure</option>
+                        <option value="amrap">AMRAP</option>
+                      </select>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder={set.suggested_kg || "0"}
+                        value={set.weight_kg}
+                        onChange={(e) => updateSet(exIdx, setIdx, "weight_kg", e.target.value)}
+                        className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder={set.target_reps || "0"}
+                        value={set.reps}
+                        onChange={(e) => updateSet(exIdx, setIdx, "reps", e.target.value)}
+                        className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                      />
+                      <button
+                        onClick={() => updateSet(exIdx, setIdx, "done", !set.done)}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors ${
+                          set.done
+                            ? "bg-amber-500 text-black"
+                            : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700"
+                        }`}
+                      >
+                        ✓
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {(group.prevBest || group.sets[0]?.target_reps) && (
+                  <div className="px-3 pb-1 flex items-center gap-3 text-[10px] text-neutral-600">
+                    {group.prevBest && <span>Prev best: {group.prevBest}</span>}
+                    {group.sets[0]?.target_reps && <span>Target: {group.sets[0].target_reps} reps</span>}
                   </div>
-                ))}
+                )}
 
                 <div className="px-3 py-2 flex gap-2">
                   <button
@@ -459,11 +589,15 @@ export default function WorkoutPage() {
         {/* Finish Modal */}
         {showFinish && (
           <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
-            <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 border border-neutral-800">
-              <h2 className="text-lg font-bold mb-1">Finish Workout?</h2>
-              <p className="text-sm text-neutral-500 mb-4">
-                {formatTime(elapsed)} · {totalSets} sets · {Math.round(totalVolume).toLocaleString()} kg
-              </p>
+            <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-neutral-800 max-h-[92vh] flex flex-col">
+              <div className="p-6 pb-3 border-b border-neutral-800">
+                <h2 className="text-lg font-bold mb-1">Finish Workout?</h2>
+                <p className="text-sm text-neutral-500">
+                  {formatTime(elapsed)} · {totalSets} sets · {Math.round(totalVolume).toLocaleString()} kg
+                </p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 pt-4">
               <textarea
                 rows={2}
                 placeholder="Any notes about this workout..."
@@ -473,7 +607,7 @@ export default function WorkoutPage() {
               />
 
               {/* Workout Photo */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -505,26 +639,65 @@ export default function WorkoutPage() {
                     onClick={() => photoInputRef.current?.click()}
                     className="w-full border-2 border-dashed border-neutral-700 hover:border-amber-500/40 rounded-xl py-4 text-neutral-400 hover:text-amber-400 transition-colors text-sm flex items-center justify-center gap-2"
                   >
-                    📷 Add Workout Photo
+                    📷 Add Workout Photo (optional)
                   </button>
                 )}
               </div>
+              </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={finishWorkout}
-                  disabled={saving}
-                  className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-black font-bold rounded-xl py-3 transition-colors"
-                >
-                  {saving ? "Saving..." : "Save Workout 💪"}
-                </button>
+              <div className="p-4 border-t border-neutral-800 flex gap-3 safe-bottom bg-[#141414]">
                 <button
                   onClick={() => setShowFinish(false)}
                   className="px-4 bg-neutral-800 text-neutral-400 rounded-xl py-3"
                 >
                   Cancel
                 </button>
+                <button
+                  onClick={finishWorkout}
+                  disabled={saving}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-black font-bold rounded-xl py-3 transition-colors btn-glow"
+                >
+                  {saving ? "Saving..." : "💾 Save Workout"}
+                </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Rest Timer */}
+        {restRemaining > 0 && (
+          <div className="fixed bottom-20 left-4 right-4 z-40 max-w-lg mx-auto animate-slide-up">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-black rounded-2xl shadow-2xl shadow-amber-500/30 p-3 flex items-center gap-3">
+              <div className="flex-1">
+                <p className="text-[10px] font-bold uppercase opacity-80">Rest</p>
+                <p className="text-2xl font-black tabular-nums">{Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, "0")}</p>
+              </div>
+              <button onClick={() => adjustRest(-15)} className="bg-black/15 hover:bg-black/25 rounded-lg w-9 h-9 font-bold">-15</button>
+              <button onClick={() => adjustRest(15)} className="bg-black/15 hover:bg-black/25 rounded-lg w-9 h-9 font-bold">+15</button>
+              <button onClick={stopRest} className="bg-black/80 text-white rounded-lg px-3 h-9 text-xs font-bold">Skip</button>
+            </div>
+            <div className="h-1 bg-black/20 rounded-full mt-1 overflow-hidden">
+              <div className="h-full bg-black/60 transition-all" style={{ width: `${(restRemaining / restTotal) * 100}%` }} />
+            </div>
+          </div>
+        )}
+
+        {/* Rest Config Modal */}
+        {showRestConfig && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowRestConfig(false)}>
+            <div className="bg-[#141414] w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 border border-neutral-800" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-bold mb-1">Default Rest Time</h2>
+              <p className="text-xs text-neutral-500 mb-4">Applied to all exercises without a custom rest.</p>
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {[45, 60, 90, 120, 150, 180, 240, 300].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => { setUserDefaultRest(s); setShowRestConfig(false); }}
+                    className={`rounded-xl py-3 text-sm font-semibold border ${defaultRest === s ? "bg-amber-500 text-black border-amber-500" : "bg-neutral-900 border-neutral-800 text-neutral-300"}`}
+                  >{s}s</button>
+                ))}
+              </div>
+              <button onClick={() => setShowRestConfig(false)} className="w-full bg-neutral-800 text-neutral-400 rounded-xl py-3 text-sm">Close</button>
             </div>
           </div>
         )}
@@ -533,8 +706,6 @@ export default function WorkoutPage() {
       </div>
     );
   }
-
-  // ===== IDLE VIEW: Start + History =====
   return (
     <div className="min-h-dvh pb-24">
       <div className="max-w-lg mx-auto px-4 pt-6">
