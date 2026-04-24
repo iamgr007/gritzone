@@ -88,8 +88,12 @@ export default function ProfilePage() {
         <div className="grid grid-cols-4 gap-2 mb-6">
           <StatBox label="Check-ins" value={stats.checkins} />
           <StatBox label="Workouts" value={stats.workouts} />
-          <StatBox label="Followers" value={followers} />
-          <StatBox label="Following" value={following} />
+          <Link href="/users?tab=followers" className="contents">
+            <StatBox label="Followers" value={followers} />
+          </Link>
+          <Link href="/users?tab=following" className="contents">
+            <StatBox label="Following" value={following} />
+          </Link>
         </div>
 
         {/* Beta Tester Card */}
@@ -140,6 +144,20 @@ export default function ProfilePage() {
 
         {/* Quick Links */}
         <div className="flex flex-col gap-2">
+          <Link
+            href="/users"
+            className="flex items-center justify-between bg-[#141414] rounded-2xl border border-neutral-800 p-4 hover:border-amber-500/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">👥</span>
+              <div>
+                <p className="font-semibold text-sm">Find People</p>
+                <p className="text-[10px] text-neutral-500">Follow friends to see their updates</p>
+              </div>
+            </div>
+            <span className="text-neutral-500">→</span>
+          </Link>
+
           <Link
             href="/referral"
             className="flex items-center justify-between bg-[#141414] rounded-2xl border border-neutral-800 p-4 hover:border-amber-500/30 transition-colors"
