@@ -54,7 +54,7 @@ export default function LoginPage() {
       if (loginUser) {
         await supabase.from("profiles").upsert({
           id: loginUser.id,
-          username: loginUser.user_metadata?.display_name || loginUser.email?.split("@")[0] || "user",
+          display_name: loginUser.user_metadata?.display_name || loginUser.email?.split("@")[0] || "user",
         }, { onConflict: "id", ignoreDuplicates: true });
       }
       window.location.href = "/dashboard";

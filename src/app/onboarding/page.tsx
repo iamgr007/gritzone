@@ -50,7 +50,7 @@ export default function OnboardingPage() {
         // Upsert so it works whether profile row exists or not
         const { error } = await supabase.from("profiles").upsert({
           id: user.id,
-          username: user.email?.split("@")[0] || "user",
+          display_name: user.email?.split("@")[0] || "user",
           bio: JSON.stringify({ quiz: data, bmi, completedAt: new Date().toISOString() }),
         }, { onConflict: "id" });
         if (error) console.warn("Profile save error:", error.message);

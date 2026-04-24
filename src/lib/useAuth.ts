@@ -9,13 +9,13 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
         window.location.href = "/login";
         return;
       }
       // Ensure profile exists (fixes FK violations if onboarding was skipped)
-      ensureProfile(data.user);
+      await ensureProfile(data.user);
       setUser(data.user);
       setLoading(false);
     });
