@@ -133,8 +133,19 @@ export default function LandingPage() {
           <span>·</span>
           <Link href="/refund" className="hover:text-amber-500">Refunds</Link>
           <span>·</span>
-          <a href="mailto:support@gritzone.me" className="hover:text-amber-500">Contact</a>
+          <Link href="/contact" className="hover:text-amber-500">Contact</Link>
         </div>
+        {/* TEMP: payment gateway verification - remove after approval */}
+        <div className="text-neutral-500 text-xs leading-relaxed mb-2">
+          <p className="text-neutral-300 font-semibold">Abhishek Bagathi</p>
+          <p>2, 11th Street, Kartikeyapuram, Madipakkam, Chennai - 600091, Tamil Nadu, India</p>
+          <p>
+            <a href="mailto:abhishek@gritzone.me" className="hover:text-amber-500">abhishek@gritzone.me</a>
+            {" · "}
+            <a href="tel:+917407461154" className="hover:text-amber-500">+91 74074 61154</a>
+          </p>
+        </div>
+        {/* END TEMP */}
         <p className="text-neutral-600 text-xs">
           <span className="text-amber-500 font-bold">GRIT</span>ZONE · Made for lifters, by lifters · © 2026
         </p>
