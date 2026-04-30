@@ -49,24 +49,9 @@ export default function PrivacyPage() {
           We may update this policy. Material changes will be notified via in-app banner 14 days in advance.
         </Section>
 
-        {/* TEMP: payment gateway verification - remove after approval */}
         <Section title="10. Contact">
-          <span className="block text-neutral-200 font-semibold">Abhishek Bagathi</span>
-          <span className="block">2, 11th Street, Kartikeyapuram, Madipakkam, Chennai - 600091, Tamil Nadu, India</span>
-          <span className="block">
-            Email:{" "}
-            <a href="mailto:abhishek@gritzone.me" className="text-amber-500">abhishek@gritzone.me</a>
-            {", "}
-            <a href="mailto:abhishek.bagati@gmail.com" className="text-amber-500">abhishek.bagati@gmail.com</a>
-          </span>
-          <span className="block">
-            Phone:{" "}
-            <a href="tel:+917407461154" className="text-amber-500">+91 74074 61154</a>
-            {", "}
-            <a href="tel:+918919432114" className="text-amber-500">+91 89194 32114</a>
-          </span>
+          Email: <a href="mailto:support@gritzone.me" className="text-amber-500">support@gritzone.me</a>
         </Section>
-        {/* END TEMP */}
       </div>
     </div>
   );
