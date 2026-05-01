@@ -121,22 +121,9 @@ export default function ProPage() {
 
   async function handleUpgrade(planKey: string) {
     if (planKey === "free") return;
-    // On native (Android/iOS), open external browser to web checkout instead of
-    // triggering PayU inside the webview. Required for Play Store policy compliance
-    // for any flow that *might* sell digital goods.
-    if (isNative) {
-      try {
-        const { Browser } = await import("@capacitor/browser");
-        await Browser.open({
-          url: `https://gritzone.me/pro?plan=${planKey}&billing=${billing}&utm_source=android_app`,
-          presentationStyle: "popover",
-        });
-      } catch {
-        // Fallback: normal anchor open
-        window.open(`https://gritzone.me/pro?plan=${planKey}&billing=${billing}`, "_blank");
-      }
-      return;
-    }
+    // Native (Android/iOS): we render an <a target="_blank"> instead of a button so
+    // Capacitor's webview opens the system browser. handleUpgrade only runs for web.
+    if (isNative) return;
     const plan = `${planKey}_${billing}` as PayUPlan;
     setLoading(planKey);
     await startPayUCheckout(plan, {
@@ -231,25 +218,39 @@ export default function ProPage() {
                 ))}
               </div>
 
-              <button
-                onClick={() => handleUpgrade(plan.key)}
-                disabled={loading === plan.key || plan.key === "free"}
-                className={`w-full mt-4 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
-                  plan.key === "free"
-                    ? "bg-neutral-800 text-neutral-400 cursor-default"
-                    : plan.highlight
-                    ? "bg-amber-500 hover:bg-amber-600 text-black btn-glow"
-                    : "bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
-                }`}
-              >
-                {loading === plan.key
-                  ? "Loading..."
-                  : plan.key === "free"
-                  ? "Current Plan"
-                  : isNative
-                  ? `Upgrade on web →`
-                  : `Get ${plan.name} →`}
-              </button>
+              {isNative && plan.key !== "free" ? (
+                <a
+                  href={`https://gritzone.me/pro?plan=${plan.key}&billing=${billing}&utm_source=android_app`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block text-center w-full mt-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                    plan.highlight
+                      ? "bg-amber-500 hover:bg-amber-600 text-black btn-glow"
+                      : "bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
+                  }`}
+                >
+                  Upgrade on web →
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleUpgrade(plan.key)}
+                  disabled={loading === plan.key || plan.key === "free"}
+                  className={`w-full mt-4 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
+                    plan.key === "free"
+                      ? "bg-neutral-800 text-neutral-400 cursor-default"
+                      : plan.highlight
+                      ? "bg-amber-500 hover:bg-amber-600 text-black btn-glow"
+                      : "bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
+                  }`}
+                >
+                  {loading === plan.key
+                    ? "Loading..."
+                    : plan.key === "free"
+                    ? "Current Plan"
+                    : `Get ${plan.name} →`}
+                </button>
+              )}
             </div>
           ))}
         </div>
