@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -10,6 +11,12 @@ export default function LoginPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // If URL has ?mode=signup, start in signup mode
+  useEffect(() => {
+    const m = new URLSearchParams(window.location.search).get("mode");
+    if (m === "signup") setMode("signup");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +71,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 text-sm mb-6"
+        >
+          ← Back to home
+        </Link>
+
         <div className="text-center mb-8">
           <h1 className="text-4xl font-black tracking-tighter text-amber-500 mb-0.5">GRIT<span className="text-neutral-400">ZONE</span></h1>
           <div className="inline-block bg-amber-500/20 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mt-2 mb-1">

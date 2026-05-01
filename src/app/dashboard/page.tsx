@@ -8,21 +8,14 @@ import Link from "next/link";
 import type { CheckIn, Profile } from "@/lib/types";
 import { BADGE_MAP } from "@/lib/badges";
 import { getLevel, formatXP, XP_ACTIONS } from "@/lib/xp";
+import { computeStreakFromDates, localDateStr, backfillAllBadges } from "@/lib/badges-award";
 
-function todayStr() { return new Date().toISOString().split("T")[0]; }
+function todayStr() { return localDateStr(); }
 
 function getStreak(checkins: CheckIn[]): number {
-  if (checkins.length === 0) return 0;
-  const sorted = [...checkins].sort((a, b) => b.date.localeCompare(a.date));
-  let streak = 0;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  for (let i = 0; i < sorted.length; i++) {
-    const expected = new Date(today);
-    expected.setDate(expected.getDate() - i);
-    if (sorted[i].date === expected.toISOString().split("T")[0]) streak++;
-    else break;
-  }
-  return streak;
+  return computeStreakFromDates(
+    [...checkins].sort((a, b) => b.date.localeCompare(a.date)).map((c) => c.date),
+  );
 }
 
 type FeedItem = {
@@ -32,6 +25,7 @@ type FeedItem = {
   user_name: string;
   date: string;
   created_at: string;
+  workout_id?: string;
   workout_name?: string;
   duration_seconds?: number;
   photo_url?: string | null;
@@ -63,19 +57,28 @@ export default function DashboardPage() {
   const [earnedBadges, setEarnedBadges] = useState<{ badge_key: string; earned_at: string }[]>([]);
   const [showBadgePanel, setShowBadgePanel] = useState(false);
   const [newBadgeKeys, setNewBadgeKeys] = useState<Set<string>>(new Set());
+  const [totalCheckins, setTotalCheckins] = useState(0);
+  const [totalWorkouts, setTotalWorkouts] = useState(0);
+  const [totalFoodLogs, setTotalFoodLogs] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     async function load() {
-      const [profileRes, todayRes, allRes] = await Promise.all([
+      const [profileRes, todayRes, allRes, checkinCountRes, workoutCountRes, foodCountRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user!.id).single(),
         supabase.from("checkins").select("*").eq("user_id", user!.id).eq("date", todayStr()).maybeSingle(),
         supabase.from("checkins").select("*").eq("user_id", user!.id).order("date", { ascending: false }).limit(30),
+        supabase.from("checkins").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+        supabase.from("workouts").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+        supabase.from("food_logs").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
       ]);
       setProfile(profileRes.data);
       setTodayCheckin(todayRes.data);
       setRecentCheckins(allRes.data ?? []);
       setStreak(getStreak(allRes.data ?? []));
+      setTotalCheckins(checkinCountRes.count ?? 0);
+      setTotalWorkouts(workoutCountRes.count ?? 0);
+      setTotalFoodLogs(foodCountRes.count ?? 0);
       setLoading(false);
     }
     load();
@@ -92,7 +95,17 @@ export default function DashboardPage() {
   // Load earned badges
   useEffect(() => {
     if (!user) return;
-    supabase.from("user_badges").select("badge_key, earned_at").eq("user_id", user.id).order("earned_at", { ascending: false }).then(({ data }) => {
+    let alive = true;
+    async function loadBadges() {
+      // Backfill any missed badges from past data, then read.
+      await backfillAllBadges(user!.id);
+      if (!alive) return;
+      const { data } = await supabase
+        .from("user_badges")
+        .select("badge_key, earned_at")
+        .eq("user_id", user!.id)
+        .order("earned_at", { ascending: false });
+      if (!alive) return;
       const badges = (data ?? []) as { badge_key: string; earned_at: string }[];
       setEarnedBadges(badges);
       const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -101,7 +114,9 @@ export default function DashboardPage() {
       try { seen = JSON.parse(seenStr); } catch {}
       const newKeys = new Set(badges.filter(b => new Date(b.earned_at) > sevenDaysAgo && !seen.includes(b.badge_key)).map(b => b.badge_key));
       setNewBadgeKeys(newKeys);
-    });
+    }
+    loadBadges();
+    return () => { alive = false; };
   }, [user]);
 
   function dismissBadgeNotifs() {
@@ -128,7 +143,7 @@ export default function DashboardPage() {
         const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
         const { data: workouts } = await supabase.from("workouts").select("id, user_id, name, date, duration_seconds, photo_url, created_at").in("user_id", feedUsers).gte("date", weekAgo.toISOString().split("T")[0]).order("created_at", { ascending: false }).limit(20);
         (workouts ?? []).forEach((w: any) => {
-          items.push({ id: `w-${w.id}`, type: "workout", user_id: w.user_id, user_name: nameMap[w.user_id] || "User", date: w.date, created_at: w.created_at, workout_name: w.name, duration_seconds: w.duration_seconds, photo_url: w.photo_url });
+          items.push({ id: `w-${w.id}`, type: "workout", user_id: w.user_id, user_name: nameMap[w.user_id] || "User", date: w.date, created_at: w.created_at, workout_id: w.id, workout_name: w.name, duration_seconds: w.duration_seconds, photo_url: w.photo_url });
         });
       }
 
@@ -172,9 +187,11 @@ export default function DashboardPage() {
   const formatTime = (s: number) => { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; };
   const timeAgo = (d: string) => { const diff = Math.floor((Date.now() - new Date(d).getTime()) / 1000); if (diff < 60) return "now"; if (diff < 3600) return `${Math.floor(diff / 60)}m`; if (diff < 86400) return `${Math.floor(diff / 3600)}h`; return `${Math.floor(diff / 86400)}d`; };
 
-  // Compute XP from activity (no extra DB queries — uses what we already loaded)
+  // Compute XP from ALL activity (uses real counts, not just last 30 days)
   const totalXP =
-    recentCheckins.length * XP_ACTIONS.daily_checkin +
+    totalCheckins * XP_ACTIONS.daily_checkin +
+    totalWorkouts * XP_ACTIONS.complete_workout +
+    totalFoodLogs * XP_ACTIONS.log_food +
     earnedBadges.length * XP_ACTIONS.earn_badge +
     streak * XP_ACTIONS.beta_day +
     (streak >= 3 ? XP_ACTIONS.finish_workout_streak_3 : 0) +
@@ -396,15 +413,25 @@ export default function DashboardPage() {
 
 function FeedCard({ item, currentUserId, formatTime, timeAgo }: { item: FeedItem; currentUserId: string; formatTime: (s: number) => string; timeAgo: (d: string) => string }) {
   const name = item.user_id === currentUserId ? "You" : item.user_name;
+  const profileHref = item.user_id === currentUserId ? "/profile" : `/users/${item.user_id}`;
   if (item.type === "workout") {
-    return (
-      <div className="bg-[#141414] rounded-2xl border border-neutral-800 overflow-hidden">
+    const inner = (
+      <>
         {item.photo_url && <img src={item.photo_url} alt={item.workout_name} className="w-full h-40 object-cover" />}
         <div className="p-4">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 text-xs font-bold flex-shrink-0">{item.user_name.charAt(0).toUpperCase()}</div>
+            <Link
+              href={profileHref}
+              onClick={(e) => e.stopPropagation()}
+              className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 text-xs font-bold flex-shrink-0 hover:ring-1 hover:ring-amber-500/50"
+            >
+              {item.user_name.charAt(0).toUpperCase()}
+            </Link>
             <div className="flex-1 min-w-0">
-              <p className="text-sm"><span className="font-semibold">{name}</span><span className="text-neutral-500"> completed a workout</span></p>
+              <p className="text-sm">
+                <Link href={profileHref} onClick={(e) => e.stopPropagation()} className="font-semibold hover:underline">{name}</Link>
+                <span className="text-neutral-500"> completed a workout</span>
+              </p>
             </div>
             <span className="text-[10px] text-neutral-600 flex-shrink-0">{timeAgo(item.created_at)}</span>
           </div>
@@ -413,16 +440,32 @@ function FeedCard({ item, currentUserId, formatTime, timeAgo }: { item: FeedItem
             <p className="text-xs text-neutral-500">{item.duration_seconds ? formatTime(item.duration_seconds) : "—"}</p>
           </div>
         </div>
-      </div>
+      </>
     );
+    if (item.workout_id) {
+      return (
+        <Link
+          href={`/workout/${item.workout_id}`}
+          className="bg-[#141414] rounded-2xl border border-neutral-800 hover:border-amber-500/30 transition-colors overflow-hidden block"
+        >
+          {inner}
+        </Link>
+      );
+    }
+    return <div className="bg-[#141414] rounded-2xl border border-neutral-800 overflow-hidden">{inner}</div>;
   }
   if (item.type === "food") {
     return (
       <div className="bg-[#141414] rounded-2xl border border-neutral-800 p-4">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold flex-shrink-0">{item.user_name.charAt(0).toUpperCase()}</div>
+          <Link href={profileHref} className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold flex-shrink-0">
+            {item.user_name.charAt(0).toUpperCase()}
+          </Link>
           <div className="flex-1 min-w-0">
-            <p className="text-sm"><span className="font-semibold">{name}</span><span className="text-neutral-500"> logged {item.meal_count} items</span></p>
+            <p className="text-sm">
+              <Link href={profileHref} className="font-semibold hover:underline">{name}</Link>
+              <span className="text-neutral-500"> logged {item.meal_count} items</span>
+            </p>
             <p className="text-xs text-neutral-500">{item.total_calories} cal · {new Date(item.date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })}</p>
           </div>
           <span className="text-[10px] text-neutral-600">{timeAgo(item.created_at)}</span>
@@ -433,9 +476,14 @@ function FeedCard({ item, currentUserId, formatTime, timeAgo }: { item: FeedItem
   return (
     <div className="bg-[#141414] rounded-2xl border border-neutral-800 p-4">
       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 text-xs font-bold flex-shrink-0">{item.user_name.charAt(0).toUpperCase()}</div>
+        <Link href={profileHref} className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 text-xs font-bold flex-shrink-0">
+          {item.user_name.charAt(0).toUpperCase()}
+        </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-sm"><span className="font-semibold">{name}</span><span className="text-neutral-500"> checked in</span></p>
+          <p className="text-sm">
+            <Link href={profileHref} className="font-semibold hover:underline">{name}</Link>
+            <span className="text-neutral-500"> checked in</span>
+          </p>
           <p className="text-xs text-neutral-500">{item.workout_done && "💪 "}{item.steps_count ? `${item.steps_count.toLocaleString()} steps` : ""}{item.morning_weight ? ` · ${item.morning_weight}kg` : ""}</p>
         </div>
         <span className="text-[10px] text-neutral-600">{timeAgo(item.created_at)}</span>

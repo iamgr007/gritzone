@@ -10,7 +10,8 @@ export default function LandingPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        window.location.href = "/dashboard";
+        // Use replace so back from dashboard doesn't bounce back here.
+        window.location.replace("/dashboard");
       } else {
         setChecking(false);
       }

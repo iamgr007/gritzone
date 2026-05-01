@@ -79,6 +79,20 @@ export default function ProPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [isNative, setIsNative] = useState(false);
+
+  // Detect Capacitor native (Android/iOS) — Play Store policy disallows
+  // 3rd-party payment for digital subscriptions inside the app.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (alive) setIsNative(Capacitor.isNativePlatform());
+      } catch { /* web build */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -107,6 +121,22 @@ export default function ProPage() {
 
   async function handleUpgrade(planKey: string) {
     if (planKey === "free") return;
+    // On native (Android/iOS), open external browser to web checkout instead of
+    // triggering PayU inside the webview. Required for Play Store policy compliance
+    // for any flow that *might* sell digital goods.
+    if (isNative) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({
+          url: `https://gritzone.me/pro?plan=${planKey}&billing=${billing}&utm_source=android_app`,
+          presentationStyle: "popover",
+        });
+      } catch {
+        // Fallback: normal anchor open
+        window.open(`https://gritzone.me/pro?plan=${planKey}&billing=${billing}`, "_blank");
+      }
+      return;
+    }
     const plan = `${planKey}_${billing}` as PayUPlan;
     setLoading(planKey);
     await startPayUCheckout(plan, {
@@ -139,6 +169,16 @@ export default function ProPage() {
           <h1 className="text-2xl font-bold mt-2">Choose Your Plan</h1>
           <p className="text-neutral-500 text-xs mt-1">Upgrade anytime. Cancel anytime.</p>
         </div>
+
+        {isNative && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 mb-5 text-center">
+            <p className="text-[11px] text-amber-300 leading-relaxed">
+              Subscriptions are managed on the web at <strong>gritzone.me</strong>.
+              Tap any plan to securely complete payment in your browser — your account
+              upgrades automatically.
+            </p>
+          </div>
+        )}
 
         {/* Billing Toggle */}
         <div className="flex items-center justify-center mb-6">
@@ -202,7 +242,13 @@ export default function ProPage() {
                     : "bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
                 }`}
               >
-                {loading === plan.key ? "Loading..." : plan.key === "free" ? "Current Plan" : `Get ${plan.name} →`}
+                {loading === plan.key
+                  ? "Loading..."
+                  : plan.key === "free"
+                  ? "Current Plan"
+                  : isNative
+                  ? `Upgrade on web →`
+                  : `Get ${plan.name} →`}
               </button>
             </div>
           ))}

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import BackButtonHandler from "@/components/BackButtonHandler";
 
 export const metadata: Metadata = {
   title: "GRITZONE — Show Up. Every Day.",
@@ -27,7 +28,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <BackButtonHandler />
+        {children}
+      </body>
     </html>
   );
 }

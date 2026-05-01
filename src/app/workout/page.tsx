@@ -8,6 +8,7 @@ import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
 import { celebrate, haptic } from "@/lib/celebrate";
 import { incrementQuestProgress } from "@/lib/quests-client";
+import { awardWorkoutBadges } from "@/lib/badges-award";
 
 type SetType = "normal" | "warmup" | "drop" | "failure" | "amrap";
 
@@ -384,6 +385,19 @@ export default function WorkoutPage() {
     setPhotoPreview(null);
     celebrate(); // 🎉 on workout finish
     incrementQuestProgress(user, "workout").catch(() => {});
+
+    // Award workout-related badges
+    if (workout) {
+      const completedSets = exercises.flatMap((g) => g.sets.filter((s) => s.done));
+      const maxWeightKg = completedSets.reduce((m, s) => Math.max(m, parseFloat(s.weight_kg) || 0), 0);
+      const muscleGroups = Array.from(new Set(exercises.map((g) => g.exercise.muscle)));
+      awardWorkoutBadges(user.id, {
+        hasPhoto: !!photoUrl,
+        muscleGroups,
+        maxWeightKg,
+        setsCount: completedSets.length,
+      }).catch(() => {});
+    }
 
     // Refresh history
     const { data } = await supabase
@@ -762,7 +776,11 @@ export default function WorkoutPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {history.map((w) => (
-              <div key={w.id} className="bg-[#141414] rounded-2xl border border-neutral-800 overflow-hidden">
+              <Link
+                key={w.id}
+                href={`/workout/${w.id}`}
+                className="bg-[#141414] rounded-2xl border border-neutral-800 hover:border-amber-500/30 transition-colors overflow-hidden block"
+              >
                 {w.photo_url && (
                   <img src={w.photo_url} alt={w.name} className="w-full h-40 object-cover" />
                 )}
@@ -777,7 +795,7 @@ export default function WorkoutPage() {
                     })}
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

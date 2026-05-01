@@ -7,9 +7,10 @@ import Nav from "@/components/Nav";
 import type { CheckIn } from "@/lib/types";
 import { celebrate, haptic } from "@/lib/celebrate";
 import { incrementQuestProgress } from "@/lib/quests-client";
+import { awardCheckinBadges, localDateStr } from "@/lib/badges-award";
 
 function todayStr() {
-  return new Date().toISOString().split("T")[0];
+  return localDateStr();
 }
 
 export default function CheckInPage() {
@@ -109,6 +110,7 @@ export default function CheckInPage() {
       const { user_id, date: _d, ...updatePayload } = payload;
       await supabase.from("checkins").update(updatePayload).eq("id", existingId);
       haptic("light");
+      awardCheckinBadges(user.id).catch(() => {});
     } else {
       const { data } = await supabase.from("checkins").insert(payload).select("id").single();
       if (data) {
@@ -116,6 +118,7 @@ export default function CheckInPage() {
         celebrate(); // confetti + haptic for first check-in of the day
         incrementQuestProgress(user, "checkin").catch(() => {});
         incrementQuestProgress(user, "streak_day").catch(() => {});
+        awardCheckinBadges(user.id).catch(() => {});
       }
     }
 

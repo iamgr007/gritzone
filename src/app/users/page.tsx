@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import { awardFollowerBadges } from "@/lib/badges-award";
 
 type Profile = {
   id: string;
@@ -28,13 +29,14 @@ function UsersInner() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
+  const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!user) return;
     let alive = true;
     async function load() {
       setLoading(true);
-      const [followingRes, followersRes, allProfilesRes] = await Promise.all([
+      const [followingRes, followersRes, allProfilesRes, allFollowsRes] = await Promise.all([
         supabase.from("follows").select("following_id").eq("follower_id", user!.id),
         supabase.from("follows").select("follower_id").eq("following_id", user!.id),
         supabase
@@ -43,6 +45,7 @@ function UsersInner() {
           .neq("id", user!.id)
           .order("display_name", { ascending: true })
           .limit(500),
+        supabase.from("follows").select("following_id"),
       ]);
       if (!alive) return;
       setFollowingIds(
@@ -52,6 +55,12 @@ function UsersInner() {
         new Set((followersRes.data || []).map((r: { follower_id: string }) => r.follower_id)),
       );
       setProfiles((allProfilesRes.data as Profile[]) || []);
+      // Tally follower counts for suggestions
+      const counts: Record<string, number> = {};
+      (allFollowsRes.data || []).forEach((r: { following_id: string }) => {
+        counts[r.following_id] = (counts[r.following_id] || 0) + 1;
+      });
+      setFollowerCounts(counts);
       setLoading(false);
     }
     load();
@@ -77,6 +86,8 @@ function UsersInner() {
       console.error("follow failed", error);
       setFollowingIds(prev);
       alert("Could not follow: " + error.message);
+    } else {
+      awardFollowerBadges(id).catch(() => {});
     }
     setBusy((b) => {
       const n = new Set(b);
@@ -130,6 +141,24 @@ function UsersInner() {
     });
   }, [tab, profiles, followingIds, followerIds, query, profileMap]);
 
+  // Follow suggestions: people you don't follow yet, ranked by follower count, then mutual followers, then name.
+  const suggestions = useMemo(() => {
+    if (tab !== "discover") return [];
+    return profiles
+      .filter((p) => !followingIds.has(p.id))
+      .map((p) => ({
+        p,
+        followers: followerCounts[p.id] || 0,
+        mutual: followerIds.has(p.id), // they follow you back already
+      }))
+      .sort((a, b) => {
+        if (a.mutual !== b.mutual) return a.mutual ? -1 : 1;
+        if (a.followers !== b.followers) return b.followers - a.followers;
+        return (a.p.display_name || "").localeCompare(b.p.display_name || "");
+      })
+      .slice(0, 6);
+  }, [tab, profiles, followingIds, followerIds, followerCounts]);
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-dvh">
@@ -176,6 +205,43 @@ function UsersInner() {
           className="w-full mb-4 bg-[#141414] border border-neutral-800 rounded-xl px-4 py-2.5 text-sm placeholder-neutral-600 focus:outline-none focus:border-amber-500/40"
         />
 
+        {/* Follow Suggestions */}
+        {tab === "discover" && !query && suggestions.length > 0 && (
+          <div className="mb-5">
+            <h2 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-widest mb-2">
+              Suggested for you
+            </h2>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4">
+              {suggestions.map(({ p, followers, mutual }) => {
+                const isBusy = busy.has(p.id);
+                return (
+                  <div
+                    key={p.id}
+                    className="flex-shrink-0 w-36 bg-[#141414] rounded-2xl border border-neutral-800 p-3 text-center"
+                  >
+                    <Link href={`/users/${p.id}`} className="block">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-lg mb-2">
+                        {(p.display_name || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <p className="font-semibold text-xs truncate">{p.display_name || "Unnamed"}</p>
+                      <p className="text-[9px] text-neutral-500 mt-0.5">
+                        {mutual ? "Follows you" : followers > 0 ? `${followers} follower${followers === 1 ? "" : "s"}` : "New here"}
+                      </p>
+                    </Link>
+                    <button
+                      disabled={isBusy}
+                      onClick={() => follow(p.id)}
+                      className="w-full mt-2 bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-bold py-1.5 rounded-lg disabled:opacity-50"
+                    >
+                      {isBusy ? "…" : "Follow"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {listIds.length === 0 ? (
           <div className="text-center text-neutral-500 text-sm py-12">
             {tab === "discover"
@@ -194,24 +260,30 @@ function UsersInner() {
               return (
                 <li
                   key={id}
-                  className="flex items-center gap-3 bg-[#141414] rounded-2xl border border-neutral-800 p-3"
+                  className="flex items-center gap-3 bg-[#141414] rounded-2xl border border-neutral-800 p-3 hover:border-amber-500/30 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold flex-shrink-0">
-                    {(p.display_name || "?").charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">
-                      {p.display_name || "Unnamed"}
-                    </p>
-                    {p.bio && (
-                      <p className="text-[11px] text-neutral-500 truncate">
-                        {safeBio(p.bio)}
+                  <Link href={`/users/${id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold flex-shrink-0">
+                      {(p.display_name || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">
+                        {p.display_name || "Unnamed"}
                       </p>
-                    )}
-                  </div>
+                      {p.bio && (
+                        <p className="text-[11px] text-neutral-500 truncate">
+                          {safeBio(p.bio)}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
                   <button
                     disabled={isBusy}
-                    onClick={() => (isFollowing ? unfollow(id) : follow(id))}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      isFollowing ? unfollow(id) : follow(id);
+                    }}
                     className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
                       isFollowing
                         ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"

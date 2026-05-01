@@ -40,6 +40,13 @@ next-env.d.ts
 /ios
 /android
 
+# Android signing — never commit
+android/keystore.properties
+android/*.keystore
+android/*.jks
+*.keystore
+*.jks
+
 
 # Firebase service account (NEVER commit)
 *firebase-adminsdk*.json
@@ -51,3 +58,7 @@ WhatsApp*.jpeg
 WhatsApp*.jpg
 *.heic
 screenshot*.png
+
+# private docs / build output
+gritzone_invoice.pdf
+/www/
