@@ -92,28 +92,44 @@ export default function DashboardPage() {
     });
   }, [user]);
 
-  // Load earned badges
+  // Load earned badges (and run backfill at most once per day in the background)
   useEffect(() => {
     if (!user) return;
     let alive = true;
     async function loadBadges() {
-      // Backfill any missed badges from past data, then read.
-      await backfillAllBadges(user!.id);
-      if (!alive) return;
-      const { data } = await supabase
+      // Read badges immediately so UI doesn't wait
+      const fetchBadges = () => supabase
         .from("user_badges")
         .select("badge_key, earned_at")
         .eq("user_id", user!.id)
         .order("earned_at", { ascending: false });
+
+      const initial = await fetchBadges();
       if (!alive) return;
-      const badges = (data ?? []) as { badge_key: string; earned_at: string }[];
-      setEarnedBadges(badges);
+      const initialBadges = (initial.data ?? []) as { badge_key: string; earned_at: string }[];
+      setEarnedBadges(initialBadges);
+
+      // Compute "new" markers off whatever we already have
       const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const seenStr = localStorage.getItem("gritzone_seen_badges") || "[]";
       let seen: string[] = [];
       try { seen = JSON.parse(seenStr); } catch {}
-      const newKeys = new Set(badges.filter(b => new Date(b.earned_at) > sevenDaysAgo && !seen.includes(b.badge_key)).map(b => b.badge_key));
+      const newKeys = new Set(initialBadges.filter(b => new Date(b.earned_at) > sevenDaysAgo && !seen.includes(b.badge_key)).map(b => b.badge_key));
       setNewBadgeKeys(newKeys);
+
+      // Backfill is expensive — run at most once per local day per user, in the background
+      const backfillKey = `gritzone_backfill_${user!.id}`;
+      const today = new Date().toDateString();
+      if (localStorage.getItem(backfillKey) !== today) {
+        backfillAllBadges(user!.id)
+          .then(async () => {
+            localStorage.setItem(backfillKey, today);
+            const refreshed = await fetchBadges();
+            if (!alive) return;
+            setEarnedBadges((refreshed.data ?? []) as typeof initialBadges);
+          })
+          .catch(() => {});
+      }
     }
     loadBadges();
     return () => { alive = false; };

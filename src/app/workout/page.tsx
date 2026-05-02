@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import AppHeader from "@/components/AppHeader";
 import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
 import { celebrate, haptic } from "@/lib/celebrate";
@@ -722,6 +723,7 @@ export default function WorkoutPage() {
   }
   return (
     <div className="min-h-dvh pb-24">
+      <AppHeader title="Workout" />
       <div className="max-w-lg mx-auto px-4 pt-6">
         <h1 className="text-xl font-bold mb-4">Workout</h1>
 

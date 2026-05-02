@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import AppHeader from "@/components/AppHeader";
 import { ALL_BADGES, BADGE_MAP, RARITY_COLORS, RARITY_LABELS, type Badge } from "@/lib/badges";
 
 const CATEGORIES = ["all", "streak", "workout", "diet", "discipline", "social", "beta"] as const;
@@ -49,6 +50,7 @@ export default function AchievementsPage() {
 
   return (
     <div className="min-h-dvh pb-24">
+      <AppHeader title="Achievements" />
       <div className="max-w-lg mx-auto px-4 pt-6">
         <h1 className="text-xl font-bold mb-1">Achievements</h1>
         <p className="text-neutral-500 text-sm mb-4">

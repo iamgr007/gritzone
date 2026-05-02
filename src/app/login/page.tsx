@@ -8,6 +8,8 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,6 +23,18 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (mode === "signup") {
+      if (password.length < 8) {
+        setError("Password must be at least 8 characters.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Passwords don’t match.");
+        return;
+      }
+    }
+
     setLoading(true);
 
     if (mode === "signup") {
@@ -111,16 +125,49 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-400 mb-1.5">Password</label>
+            <label className="block text-sm text-neutral-400 mb-1.5">
+              Password
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="float-right text-[11px] text-amber-500 hover:text-amber-400"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
-              minLength={6}
+              minLength={mode === "signup" ? 8 : 6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
             />
+            {mode === "signup" && password.length > 0 && (
+              <PasswordStrength value={password} />
+            )}
           </div>
+
+          {mode === "signup" && (
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1.5">Confirm Password</label>
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat password"
+                autoComplete="new-password"
+              />
+              {confirmPassword.length > 0 && (
+                <p className={`text-[11px] mt-1 ${password === confirmPassword ? "text-green-400" : "text-red-400"}`}>
+                  {password === confirmPassword ? "✓ Passwords match" : "Passwords don’t match"}
+                </p>
+              )}
+            </div>
+          )}
 
           {error && (
             <p className="text-red-400 text-sm bg-red-400/10 rounded-lg px-3 py-2">{error}</p>
@@ -138,13 +185,34 @@ export default function LoginPage() {
         <p className="text-center text-neutral-500 text-sm mt-6">
           {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
           <button
-            onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }}
+            onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); setConfirmPassword(""); }}
             className="text-amber-500 hover:underline"
           >
             {mode === "login" ? "Sign Up" : "Log In"}
           </button>
         </p>
       </div>
+    </div>
+  );
+}
+
+function PasswordStrength({ value }: { value: string }) {
+  // Cheap heuristic: length + variety of character classes
+  let score = 0;
+  if (value.length >= 8) score++;
+  if (value.length >= 12) score++;
+  if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score++;
+  if (/\d/.test(value)) score++;
+  if (/[^A-Za-z0-9]/.test(value)) score++;
+  const labels = ["Very weak", "Weak", "Okay", "Good", "Strong", "Excellent"];
+  const colors = ["bg-red-500", "bg-red-400", "bg-amber-400", "bg-amber-300", "bg-green-400", "bg-green-500"];
+  const widthPct = (score / 5) * 100;
+  return (
+    <div className="mt-1.5">
+      <div className="h-1 w-full bg-neutral-800 rounded-full overflow-hidden">
+        <div className={`h-full ${colors[score]} transition-all`} style={{ width: `${widthPct}%` }} />
+      </div>
+      <p className="text-[11px] text-neutral-500 mt-1">Strength: <span className="text-neutral-300">{labels[score]}</span></p>
     </div>
   );
 }

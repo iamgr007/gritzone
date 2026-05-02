@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import AppHeader from "@/components/AppHeader";
 import { BADGE_MAP, RARITY_COLORS } from "@/lib/badges";
 import Link from "next/link";
 
@@ -64,6 +65,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-dvh pb-24">
+      <AppHeader title="Profile" />
       <div className="max-w-lg mx-auto px-4 pt-6">
         {/* Profile Header */}
         <div className="flex items-center gap-4 mb-6">

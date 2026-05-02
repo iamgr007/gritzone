@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import AppHeader from "@/components/AppHeader";
 import { incrementQuestProgress } from "@/lib/quests-client";
 import { searchFoods, getPopularFoods, calcNutrition, type FoodItem } from "@/lib/food-data";
 
@@ -291,6 +292,7 @@ export default function FoodPage() {
 
   return (
     <div className="min-h-dvh pb-24">
+      <AppHeader title="Food Log" />
       <div className="max-w-lg mx-auto px-4 pt-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
