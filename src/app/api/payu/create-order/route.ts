@@ -13,11 +13,23 @@ const PRICES: Record<string, number> = {
 };
 
 const PLAN_LABELS: Record<string, string> = {
-  pro_monthly: "GRITZONE Pro — Monthly",
-  pro_yearly: "GRITZONE Pro — Yearly",
-  promax_monthly: "GRITZONE Pro Max — Monthly",
-  promax_yearly: "GRITZONE Pro Max — Yearly",
+  pro_monthly: "GRITZONE Pro - Monthly",
+  pro_yearly: "GRITZONE Pro - Yearly",
+  promax_monthly: "GRITZONE Pro Max - Monthly",
+  promax_yearly: "GRITZONE Pro Max - Yearly",
 };
+
+// PayU V1 endpoint rejects non-ASCII characters in productinfo / firstname / email
+// with a generic 409 "Invalid response format received from V1". Strip aggressively.
+function sanitize(s: string, max = 100): string {
+  return s
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // strip diacritics
+    .replace(/[^\x20-\x7E]/g, "")     // ASCII printable only
+    .replace(/[|]/g, "")               // pipe is the hash separator
+    .trim()
+    .slice(0, max);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,13 +51,13 @@ export async function POST(req: NextRequest) {
     }
 
     const txnid = `gz_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
-    const productinfo = PLAN_LABELS[plan];
-    const firstname = name || email?.split("@")[0] || "User";
-    const userEmail = email || "user@gritzone.me";
+    const productinfo = sanitize(PLAN_LABELS[plan]);
+    const firstname = sanitize(name || email?.split("@")[0] || "User", 50) || "User";
+    const userEmail = sanitize(email || "user@gritzone.me", 80);
 
     // Custom fields (PayU udf1..udf5) — use udf1 for userId, udf2 for plan
-    const udf1 = userId || "";
-    const udf2 = plan;
+    const udf1 = sanitize(userId || "");
+    const udf2 = sanitize(plan);
 
     // PayU hash formula: sha512(key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5||||||salt)
     const hashString = `${merchantKey}|${txnid}|${amount}|${productinfo}|${firstname}|${userEmail}|${udf1}|${udf2}|||||||||${merchantSalt}`;
