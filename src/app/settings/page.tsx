@@ -120,6 +120,42 @@ export default function SettingsPage() {
             <span className="text-neutral-500">→</span>
           </Link>
         </div>
+
+        {/* Legal & account */}
+        <div className="mt-6 flex flex-col gap-2">
+          <Link href="/privacy" className="flex items-center justify-between bg-[#141414] rounded-2xl border border-neutral-800 p-4 hover:border-amber-500/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🔒</span>
+              <div>
+                <p className="font-semibold text-sm">Privacy Policy</p>
+                <p className="text-[10px] text-neutral-500">How we handle your data</p>
+              </div>
+            </div>
+            <span className="text-neutral-500">→</span>
+          </Link>
+
+          <Link href="/terms" className="flex items-center justify-between bg-[#141414] rounded-2xl border border-neutral-800 p-4 hover:border-amber-500/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">📄</span>
+              <div>
+                <p className="font-semibold text-sm">Terms of Service</p>
+                <p className="text-[10px] text-neutral-500">Rules for using GRITZONE</p>
+              </div>
+            </div>
+            <span className="text-neutral-500">→</span>
+          </Link>
+
+          <Link href="/account/delete" className="flex items-center justify-between bg-red-500/5 rounded-2xl border border-red-500/30 p-4 hover:border-red-500/60 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🗑️</span>
+              <div>
+                <p className="font-semibold text-sm text-red-400">Delete Account</p>
+                <p className="text-[10px] text-neutral-500">Permanently remove your data</p>
+              </div>
+            </div>
+            <span className="text-red-400/70">→</span>
+          </Link>
+        </div>
       </div>
       <Nav />
     </div>
