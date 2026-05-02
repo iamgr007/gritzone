@@ -219,10 +219,22 @@ export default function ProPage() {
               </div>
 
               {isNative && plan.key !== "free" ? (
-                <a
-                  href={`https://gritzone.me/pro?plan=${plan.key}&billing=${billing}&utm_source=android_app`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const url = `https://gritzone.me/pro?plan=${plan.key}&billing=${billing}&utm_source=android_app`;
+                    // Try @capacitor/browser first (only works if AAB shipped with the plugin)
+                    try {
+                      const { Browser } = await import("@capacitor/browser");
+                      await Browser.open({ url, presentationStyle: "popover" });
+                      return;
+                    } catch { /* plugin not bundled in this AAB */ }
+                    // Fallback: Android intent URI forces system browser even from WebView
+                    const intentUrl = `intent://gritzone.me/pro?plan=${plan.key}&billing=${billing}&utm_source=android_app#Intent;scheme=https;package=com.android.chrome;end`;
+                    window.location.href = intentUrl;
+                    // If Chrome isn't installed, fall back to plain href after a tick
+                    setTimeout(() => { window.open(url, "_blank"); }, 500);
+                  }}
                   className={`block text-center w-full mt-4 py-3 rounded-xl font-bold text-sm transition-all ${
                     plan.highlight
                       ? "bg-amber-500 hover:bg-amber-600 text-black btn-glow"
@@ -230,7 +242,7 @@ export default function ProPage() {
                   }`}
                 >
                   Upgrade on web →
-                </a>
+                </button>
               ) : (
                 <button
                   type="button"
