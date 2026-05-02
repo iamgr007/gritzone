@@ -19,6 +19,8 @@ const config: CapacitorConfig = {
       'secure.payu.in',
       '*.payu.in',
       'accounts.google.com',
+      'wger.de',
+      '*.wger.de',
     ],
   },
   android: {

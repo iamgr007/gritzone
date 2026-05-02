@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import Link from "next/link";
-import { EXERCISES, MUSCLE_GROUPS, type Exercise } from "@/lib/exercise-data";
+import { EXERCISES, MUSCLE_GROUPS, findExercise, type Exercise } from "@/lib/exercise-data";
 
 type RegimeExercise = { exercise: Exercise; sets: number; reps: string; rest: string };
 type Regime = {
@@ -15,33 +15,42 @@ type Regime = {
   is_template: boolean;
 };
 
+// Helper: build a regime exercise entry, gracefully skipping if no match.
+function rx(name: string, sets: number, reps: string, rest: string): RegimeExercise | null {
+  const ex = findExercise(name);
+  return ex ? { exercise: ex, sets, reps, rest } : null;
+}
+function compact(arr: (RegimeExercise | null)[]): RegimeExercise[] {
+  return arr.filter((x): x is RegimeExercise => x !== null);
+}
+
 const PRESET_REGIMES: Regime[] = [
   {
     id: "ppl",
     name: "Push / Pull / Legs (6-day)",
     is_template: true,
     days: [
-      { name: "Push (Chest/Shoulders/Triceps)", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Bench Press")!, sets: 4, reps: "8-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Overhead Press")!, sets: 3, reps: "8-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Incline Dumbbell Press")!, sets: 3, reps: "10-12", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Lateral Raises")!, sets: 3, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Tricep Pushdowns")!, sets: 3, reps: "12-15", rest: "45s" },
-      ]},
-      { name: "Pull (Back/Biceps)", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Deadlift")!, sets: 4, reps: "5-6", rest: "120s" },
-        { exercise: EXERCISES.find(e => e.name === "Barbell Rows")!, sets: 4, reps: "8-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Pull Ups")!, sets: 3, reps: "6-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Face Pulls")!, sets: 3, reps: "15-20", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Barbell Curls")!, sets: 3, reps: "10-12", rest: "45s" },
-      ]},
-      { name: "Legs", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Squats")!, sets: 4, reps: "6-8", rest: "120s" },
-        { exercise: EXERCISES.find(e => e.name === "Leg Press")!, sets: 3, reps: "10-12", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Romanian Deadlift")!, sets: 3, reps: "10-12", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Leg Extensions")!, sets: 3, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Calf Raises")!, sets: 4, reps: "15-20", rest: "30s" },
-      ]},
+      { name: "Push (Chest/Shoulders/Triceps)", exercises: compact([
+        rx("Bench Press", 4, "8-10", "90s"),
+        rx("Overhead Press", 3, "8-10", "90s"),
+        rx("Incline Dumbbell Press", 3, "10-12", "60s"),
+        rx("Lateral Raises", 3, "12-15", "45s"),
+        rx("Tricep Pushdown", 3, "12-15", "45s"),
+      ])},
+      { name: "Pull (Back/Biceps)", exercises: compact([
+        rx("Deadlift", 4, "5-6", "120s"),
+        rx("Barbell Row", 4, "8-10", "90s"),
+        rx("Pull Up", 3, "6-10", "90s"),
+        rx("Face Pull", 3, "15-20", "45s"),
+        rx("Barbell Curl", 3, "10-12", "45s"),
+      ])},
+      { name: "Legs", exercises: compact([
+        rx("Squats", 4, "6-8", "120s"),
+        rx("Leg Press", 3, "10-12", "90s"),
+        rx("Romanian Deadlift", 3, "10-12", "90s"),
+        rx("Leg Extension", 3, "12-15", "45s"),
+        rx("Calf Raises", 4, "15-20", "30s"),
+      ])},
     ],
   },
   {
@@ -49,34 +58,34 @@ const PRESET_REGIMES: Regime[] = [
     name: "Upper / Lower (4-day)",
     is_template: true,
     days: [
-      { name: "Upper A (Strength)", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Bench Press")!, sets: 4, reps: "5-6", rest: "120s" },
-        { exercise: EXERCISES.find(e => e.name === "Barbell Rows")!, sets: 4, reps: "5-6", rest: "120s" },
-        { exercise: EXERCISES.find(e => e.name === "Overhead Press")!, sets: 3, reps: "8-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Pull Ups")!, sets: 3, reps: "6-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Barbell Curls")!, sets: 2, reps: "10-12", rest: "45s" },
-      ]},
-      { name: "Lower A (Strength)", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Squats")!, sets: 4, reps: "5-6", rest: "120s" },
-        { exercise: EXERCISES.find(e => e.name === "Romanian Deadlift")!, sets: 3, reps: "8-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Leg Press")!, sets: 3, reps: "10-12", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Leg Curls")!, sets: 3, reps: "12-15", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Calf Raises")!, sets: 4, reps: "15-20", rest: "30s" },
-      ]},
-      { name: "Upper B (Hypertrophy)", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Incline Dumbbell Press")!, sets: 3, reps: "10-12", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Cable Rows")!, sets: 3, reps: "10-12", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Lateral Raises")!, sets: 4, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Tricep Pushdowns")!, sets: 3, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Hammer Curls")!, sets: 3, reps: "10-12", rest: "45s" },
-      ]},
-      { name: "Lower B (Hypertrophy)", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Leg Press")!, sets: 4, reps: "12-15", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Lunges")!, sets: 3, reps: "10/leg", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Leg Extensions")!, sets: 3, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Leg Curls")!, sets: 3, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Calf Raises")!, sets: 4, reps: "15-20", rest: "30s" },
-      ]},
+      { name: "Upper A (Strength)", exercises: compact([
+        rx("Bench Press", 4, "5-6", "120s"),
+        rx("Barbell Row", 4, "5-6", "120s"),
+        rx("Overhead Press", 3, "8-10", "90s"),
+        rx("Pull Up", 3, "6-10", "90s"),
+        rx("Barbell Curl", 2, "10-12", "45s"),
+      ])},
+      { name: "Lower A (Strength)", exercises: compact([
+        rx("Squats", 4, "5-6", "120s"),
+        rx("Romanian Deadlift", 3, "8-10", "90s"),
+        rx("Leg Press", 3, "10-12", "90s"),
+        rx("Leg Curl", 3, "12-15", "60s"),
+        rx("Calf Raises", 4, "15-20", "30s"),
+      ])},
+      { name: "Upper B (Hypertrophy)", exercises: compact([
+        rx("Incline Dumbbell Press", 3, "10-12", "60s"),
+        rx("Seated Cable Row", 3, "10-12", "60s"),
+        rx("Lateral Raises", 4, "12-15", "45s"),
+        rx("Tricep Pushdown", 3, "12-15", "45s"),
+        rx("Hammer Curl", 3, "10-12", "45s"),
+      ])},
+      { name: "Lower B (Hypertrophy)", exercises: compact([
+        rx("Leg Press", 4, "12-15", "60s"),
+        rx("Lunges", 3, "10/leg", "60s"),
+        rx("Leg Extension", 3, "12-15", "45s"),
+        rx("Leg Curl", 3, "12-15", "45s"),
+        rx("Calf Raises", 4, "15-20", "30s"),
+      ])},
     ],
   },
   {
@@ -84,27 +93,27 @@ const PRESET_REGIMES: Regime[] = [
     name: "Full Body (3-day)",
     is_template: true,
     days: [
-      { name: "Day A", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Squats")!, sets: 3, reps: "8-10", rest: "120s" },
-        { exercise: EXERCISES.find(e => e.name === "Bench Press")!, sets: 3, reps: "8-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Barbell Rows")!, sets: 3, reps: "8-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Overhead Press")!, sets: 3, reps: "10-12", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Barbell Curls")!, sets: 2, reps: "12-15", rest: "45s" },
-      ]},
-      { name: "Day B", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Deadlift")!, sets: 3, reps: "5-6", rest: "120s" },
-        { exercise: EXERCISES.find(e => e.name === "Incline Dumbbell Press")!, sets: 3, reps: "10-12", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Pull Ups")!, sets: 3, reps: "6-10", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Lateral Raises")!, sets: 3, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Tricep Pushdowns")!, sets: 2, reps: "12-15", rest: "45s" },
-      ]},
-      { name: "Day C", exercises: [
-        { exercise: EXERCISES.find(e => e.name === "Leg Press")!, sets: 3, reps: "12-15", rest: "90s" },
-        { exercise: EXERCISES.find(e => e.name === "Cable Rows")!, sets: 3, reps: "10-12", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Dumbbell Shoulder Press")!, sets: 3, reps: "10-12", rest: "60s" },
-        { exercise: EXERCISES.find(e => e.name === "Chest Flys")!, sets: 3, reps: "12-15", rest: "45s" },
-        { exercise: EXERCISES.find(e => e.name === "Plank")!, sets: 3, reps: "45-60s", rest: "30s" },
-      ]},
+      { name: "Day A", exercises: compact([
+        rx("Squats", 3, "8-10", "120s"),
+        rx("Bench Press", 3, "8-10", "90s"),
+        rx("Barbell Row", 3, "8-10", "90s"),
+        rx("Overhead Press", 3, "10-12", "60s"),
+        rx("Barbell Curl", 2, "12-15", "45s"),
+      ])},
+      { name: "Day B", exercises: compact([
+        rx("Deadlift", 3, "5-6", "120s"),
+        rx("Incline Dumbbell Press", 3, "10-12", "60s"),
+        rx("Pull Up", 3, "6-10", "90s"),
+        rx("Lateral Raises", 3, "12-15", "45s"),
+        rx("Tricep Pushdown", 2, "12-15", "45s"),
+      ])},
+      { name: "Day C", exercises: compact([
+        rx("Leg Press", 3, "12-15", "90s"),
+        rx("Seated Cable Row", 3, "10-12", "60s"),
+        rx("Dumbbell Shoulder Press", 3, "10-12", "60s"),
+        rx("Chest Fly", 3, "12-15", "45s"),
+        rx("Plank", 3, "45-60s", "30s"),
+      ])},
     ],
   },
 ];

@@ -895,19 +895,37 @@ function ExercisePickerModal({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {results.map((ex, i) => (
+          {results.map((ex) => (
             <button
-              key={i}
+              key={ex.id}
               onClick={() => onSelect(ex)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-900 border-b border-neutral-800/50 text-left"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-900 border-b border-neutral-800/50 text-left"
             >
-              <div>
-                <p className="text-sm font-medium">{ex.name}</p>
-                <p className="text-[10px] text-neutral-500">{ex.muscle} · {ex.category}</p>
+              {ex.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={ex.image}
+                  alt=""
+                  loading="lazy"
+                  className="w-12 h-12 rounded-lg object-cover bg-neutral-800 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-neutral-800 flex items-center justify-center flex-shrink-0 text-lg">
+                  {ex.category === "cardio" ? "🏃" : "💪"}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{ex.name}</p>
+                <p className="text-[10px] text-neutral-500 truncate">
+                  {ex.primary_muscles.length ? ex.primary_muscles.join(", ") : ex.muscle} · {ex.category}
+                </p>
               </div>
               <span className="text-amber-500 text-lg">+</span>
             </button>
           ))}
+          {results.length === 0 && (
+            <p className="px-4 py-6 text-center text-xs text-neutral-500">No exercises match.</p>
+          )}
         </div>
       </div>
     </div>
