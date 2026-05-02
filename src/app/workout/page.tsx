@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import AppHeader from "@/components/AppHeader";
+import ExerciseDetailModal from "@/components/ExerciseDetailModal";
+import BodyMap from "@/components/BodyMap";
 import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
 import { celebrate, haptic } from "@/lib/celebrate";
@@ -67,6 +69,7 @@ export default function WorkoutPage() {
   const [notes, setNotes] = useState("");
   const [workoutPhoto, setWorkoutPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [infoExercise, setInfoExercise] = useState<Exercise | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const startTimeRef = useRef<number>(0);
@@ -220,6 +223,20 @@ export default function WorkoutPage() {
     return `${best.weight_kg}kg × ${best.reps}`;
   }
 
+  function suggestRestForExercise(ex: Exercise): number {
+    // Compound barbell or heavy machine = longer rest; isolation/cable = shorter
+    if (ex.category === "barbell") {
+      const heavy = /squat|deadlift|bench press|overhead press|row/i.test(ex.name);
+      return heavy ? 150 : 120;
+    }
+    if (ex.category === "machine") return 90;
+    if (ex.category === "dumbbell") return 75;
+    if (ex.category === "cable") return 60;
+    if (ex.category === "bodyweight") return 60;
+    if (ex.category === "cardio") return 30;
+    return defaultRest;
+  }
+
   function addExercise(ex: Exercise) {
     const best = getPrevBest(ex.name);
     const suggestedKg = suggestedWeightFromPrev(ex.name);
@@ -229,7 +246,7 @@ export default function WorkoutPage() {
         exercise: ex,
         sets: [{ exercise: ex, set_number: 1, weight_kg: "", reps: "", suggested_kg: suggestedKg, set_type: "normal", is_warmup: false, done: false }],
         prevBest: best,
-        restSeconds: defaultRest,
+        restSeconds: suggestRestForExercise(ex),
       },
     ]);
     setShowExercisePicker(false);
@@ -469,10 +486,21 @@ export default function WorkoutPage() {
             {exercises.map((group, exIdx) => (
               <div key={exIdx} className="bg-[#141414] rounded-2xl border border-neutral-800 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-sm text-amber-400 truncate">{group.exercise.name}</p>
-                    <p className="text-[10px] text-neutral-500">{group.exercise.muscle}</p>
-                  </div>
+                  <button
+                    onClick={() => setInfoExercise(group.exercise)}
+                    className="min-w-0 flex-1 text-left -m-1 p-1 rounded-md hover:bg-neutral-900 active:scale-[0.99] transition"
+                    aria-label="Exercise info"
+                  >
+                    <p className="font-semibold text-sm text-amber-400 truncate">
+                      {group.exercise.name}
+                      <span className="text-neutral-600 ml-1.5 text-[11px]">ⓘ</span>
+                    </p>
+                    <p className="text-[10px] text-neutral-500 truncate">
+                      {group.exercise.primary_muscles.length
+                        ? group.exercise.primary_muscles.join(", ")
+                        : group.exercise.muscle}
+                    </p>
+                  </button>
                   <button
                     onClick={() => setExerciseRest(exIdx, ((group.restSeconds || defaultRest) + 30) % 301 || 30)}
                     className="text-[10px] bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-lg text-neutral-400"
@@ -593,6 +621,7 @@ export default function WorkoutPage() {
         {showExercisePicker && (
           <ExercisePickerModal
             onSelect={addExercise}
+            onInfo={setInfoExercise}
             onClose={() => { setShowExercisePicker(false); setSearchQuery(""); setFilterMuscle(null); }}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -600,6 +629,12 @@ export default function WorkoutPage() {
             setFilterMuscle={setFilterMuscle}
           />
         )}
+
+        {/* Exercise Detail Modal (info / muscle map) */}
+        <ExerciseDetailModal
+          exercise={infoExercise}
+          onClose={() => setInfoExercise(null)}
+        />
 
         {/* Finish Modal */}
         {showFinish && (
@@ -613,6 +648,44 @@ export default function WorkoutPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 pt-4">
+              {/* Muscle map summary — shows what got hit today */}
+              {(() => {
+                const primaryHits = new Map<string, number>();
+                const secondaryHits = new Set<string>();
+                for (const g of exercises) {
+                  const completedSets = g.sets.filter((s) => s.done && s.set_type !== "warmup").length;
+                  if (completedSets === 0) continue;
+                  for (const m of g.exercise.primary_muscles) {
+                    primaryHits.set(m, (primaryHits.get(m) || 0) + completedSets);
+                  }
+                  for (const m of g.exercise.secondary_muscles) secondaryHits.add(m);
+                }
+                if (primaryHits.size === 0) return null;
+                const ranked = [...primaryHits.entries()].sort((a, b) => b[1] - a[1]);
+                return (
+                  <div className="bg-[#0d0d0d] border border-neutral-800 rounded-2xl p-4 mb-4">
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-500 mb-2">
+                      Muscles you hit today
+                    </p>
+                    <BodyMap
+                      primary={[...primaryHits.keys()]}
+                      secondary={[...secondaryHits]}
+                      size={180}
+                    />
+                    <div className="flex flex-wrap gap-1.5 justify-center mt-3">
+                      {ranked.slice(0, 6).map(([m, n]) => (
+                        <span
+                          key={m}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                        >
+                          {m} · {n} {n === 1 ? "set" : "sets"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <textarea
                 rows={2}
                 placeholder="Any notes about this workout..."
@@ -844,9 +917,10 @@ export default function WorkoutPage() {
 }
 
 function ExercisePickerModal({
-  onSelect, onClose, searchQuery, setSearchQuery, filterMuscle, setFilterMuscle,
+  onSelect, onInfo, onClose, searchQuery, setSearchQuery, filterMuscle, setFilterMuscle,
 }: {
   onSelect: (ex: Exercise) => void;
+  onInfo?: (ex: Exercise) => void;
   onClose: () => void;
   searchQuery: string;
   setSearchQuery: (s: string) => void;
@@ -896,32 +970,46 @@ function ExercisePickerModal({
 
         <div className="flex-1 overflow-y-auto">
           {results.map((ex) => (
-            <button
+            <div
               key={ex.id}
-              onClick={() => onSelect(ex)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-900 border-b border-neutral-800/50 text-left"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-900 border-b border-neutral-800/50"
             >
-              {ex.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={ex.image}
-                  alt=""
-                  loading="lazy"
-                  className="w-12 h-12 rounded-lg object-cover bg-neutral-800 flex-shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-lg bg-neutral-800 flex items-center justify-center flex-shrink-0 text-lg">
-                  {ex.category === "cardio" ? "🏃" : "💪"}
+              <button
+                onClick={() => onInfo?.(ex)}
+                className="flex items-center gap-3 flex-1 min-w-0 text-left active:scale-[0.99] transition"
+                aria-label="Show details"
+              >
+                {ex.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={ex.image}
+                    alt=""
+                    loading="lazy"
+                    className="w-12 h-12 rounded-lg object-cover bg-neutral-800 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-neutral-800 flex items-center justify-center flex-shrink-0 text-lg">
+                    {ex.category === "cardio" ? "🏃" : "💪"}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {ex.name}
+                    <span className="text-neutral-600 ml-1.5 text-[11px]">ⓘ</span>
+                  </p>
+                  <p className="text-[10px] text-neutral-500 truncate">
+                    {ex.primary_muscles.length ? ex.primary_muscles.join(", ") : ex.muscle} · {ex.category}
+                  </p>
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{ex.name}</p>
-                <p className="text-[10px] text-neutral-500 truncate">
-                  {ex.primary_muscles.length ? ex.primary_muscles.join(", ") : ex.muscle} · {ex.category}
-                </p>
-              </div>
-              <span className="text-amber-500 text-lg">+</span>
-            </button>
+              </button>
+              <button
+                onClick={() => onSelect(ex)}
+                aria-label="Add exercise"
+                className="w-9 h-9 flex-shrink-0 rounded-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 flex items-center justify-center text-lg active:scale-95 transition"
+              >
+                +
+              </button>
+            </div>
           ))}
           {results.length === 0 && (
             <p className="px-4 py-6 text-center text-xs text-neutral-500">No exercises match.</p>
