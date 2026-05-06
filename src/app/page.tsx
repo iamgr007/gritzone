@@ -48,72 +48,141 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="px-4 py-16 sm:py-24">
+      <section className="px-4 py-16 sm:py-24 relative overflow-hidden">
+        <div className="absolute inset-0 -z-10 opacity-30 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
+        </div>
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-block bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold px-3 py-1 rounded-full mb-6">
-            🧪 Now in Beta — Free Pro days for early users
+            🧪 Beta — All Pro features unlocked, free
           </div>
           <h1 className="text-5xl sm:text-7xl font-black tracking-tighter mb-4 leading-[0.95]">
-            Your fitness,<br />
-            <span className="text-amber-500">your grind.</span>
+            Train smarter.<br />
+            <span className="text-amber-500">Lift heavier.</span><br />
+            <span className="text-neutral-500 text-3xl sm:text-5xl">In tigers and trucks.</span>
           </h1>
-          <p className="text-neutral-400 text-lg sm:text-xl max-w-2xl mx-auto mb-8">
-            Track workouts like Hevy. Log food like Healthify. Build habits like Strava.
-            All in one app — designed for people who actually show up.
+          <p className="text-neutral-400 text-lg sm:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
+            AI plans for any goal. Track lifts, runs, swims, yoga — all in one place.
+            See your progress in <span className="text-amber-400">elephants and aircraft</span>, not just numbers.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/login?mode=signup" className="bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-2xl px-8 py-4 text-lg transition-colors">
+            <Link href="/login?mode=signup" className="bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-2xl px-8 py-4 text-lg transition-colors shadow-lg shadow-amber-500/20">
               Start Free →
             </Link>
-            <Link href="/login?mode=signup" className="bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-semibold rounded-2xl px-8 py-4 text-lg transition-colors">
-              Take the 60s Quiz
+            <Link href="/login?mode=signup&role=trainer" className="bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-semibold rounded-2xl px-8 py-4 text-lg transition-colors">
+              I&apos;m a Coach 🏋️
             </Link>
           </div>
-          <p className="text-neutral-600 text-xs mt-4">No credit card. No ads. No BS.</p>
+          <p className="text-neutral-600 text-xs mt-4">No credit card. Coaches earn ₹50 per AI plan reviewed.</p>
+        </div>
+      </section>
+
+      {/* Why GRITZONE — three pillars */}
+      <section className="px-4 py-12">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-3 gap-4 mb-10">
+            <Pillar
+              emoji="✨"
+              title="AI Coach"
+              desc="60-second quiz → custom workout & diet plan. Powered by Gemini, reviewed by humans on Pro Max."
+            />
+            <Pillar
+              emoji="🏋️"
+              title="Universal Tracker"
+              desc="Lift weights, run trails, do yoga, swim laps. One logger. Per-exercise smart inputs."
+            />
+            <Pillar
+              emoji="📈"
+              title="Real Progress"
+              desc="Streak tracker. Strength analogies. 50+ badges. Watch yourself become unstoppable."
+            />
+          </div>
         </div>
       </section>
 
       {/* Feature Grid */}
       <section className="px-4 py-12">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-2">Everything you need, nothing you don&apos;t</h2>
-          <p className="text-neutral-500 text-center mb-10">One app replaces four.</p>
+          <h2 className="text-3xl font-bold text-center mb-2">Everything in one app</h2>
+          <p className="text-neutral-500 text-center mb-10">Replace Hevy + Healthify + Fitbit + your coach.</p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FeatureCard icon="📷" title="AI Food Scanner" desc="Snap a photo of your plate. Our AI identifies every item and calculates macros instantly." badge="Pro Max" />
-            <FeatureCard icon="💪" title="Workout Logger" desc="Hevy-style set tracking with previous bests, rest timers, and regime templates (PPL, Upper/Lower)." />
-            <FeatureCard icon="🍽️" title="Food Diary" desc="90+ Indian foods with macros. Search, quick-add, or create custom entries." />
+            <FeatureCard icon="✨" title="AI Plan Generator" desc="Tell us your goal, equipment, and schedule. Get a structured plan instantly. Free during beta." badge="New" />
+            <FeatureCard icon="🏋️" title="Universal Workout Logger" desc="Lifts, calisthenics, yoga, runs, swims, cycling. Each gets the right inputs — sets×reps, time, distance, or flow." />
+            <FeatureCard icon="📷" title="AI Food Scanner" desc="Snap a photo of your plate. Identifies items, calculates macros — Indian dishes too." />
+            <FeatureCard icon="🐅" title="Strength Analogies" desc="Total volume in tigers, trucks, blue whales. Numbers are boring. Animals are not." />
             <FeatureCard icon="📊" title="Daily Check-ins" desc="Weight, sleep, water, steps. Build a 365-day streak and watch your body transform." />
-            <FeatureCard icon="🏆" title="50+ Badges" desc="Unlock achievements as you grind. Gamified progress that keeps you coming back." />
-            <FeatureCard icon="👥" title="Social Feed" desc="Follow friends. See their workouts and meals. Stay accountable together." />
-            <FeatureCard icon="💊" title="Supplement Tracker" desc="Log multivitamins, fish oil, creatine. Watch your year as a 365-day GitHub-style grid." />
-            <FeatureCard icon="📋" title="Workout Regimes" desc="Copy proven templates or build your own. Start a workout with one tap." />
-            <FeatureCard icon="🎯" title="Personalized Plans" desc="60-second quiz. BMI, goals, diet. We calculate your macros and recommend a split." badge="Pro" />
+            <FeatureCard icon="🎯" title="Quests & XP" desc="Daily and weekly objectives. Stack XP, climb levels, earn free Pro days at launch." />
+            <FeatureCard icon="🏆" title="50+ Badges" desc="Beta tester, perfect week, first plate, double plate. Gamified milestones for every grinder." />
+            <FeatureCard icon="👥" title="Coach Marketplace" desc="Pro Max users get every AI plan reviewed by a real trainer or nutritionist within 24h." badge="Pro Max" />
+            <FeatureCard icon="📚" title="Free Knowledge" desc="TRANSFORM, FUEL, IGNITE — handbooks for every fitness goal, free for beta users." />
+          </div>
+        </div>
+      </section>
+
+      {/* Universal activities highlight */}
+      <section className="px-4 py-16 bg-neutral-950">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-2">Not just a gym app.</h2>
+          <p className="text-neutral-500 text-center mb-10">Track whatever you do.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {[
+              { e: "🏋️", l: "Lifting" },
+              { e: "🤸", l: "Calisthenics" },
+              { e: "🧘", l: "Yoga" },
+              { e: "🏃", l: "Running" },
+              { e: "🏊", l: "Swimming" },
+              { e: "🚴", l: "Cycling" },
+              { e: "🧗", l: "Climbing" },
+              { e: "🥋", l: "Pilates" },
+              { e: "💃", l: "HIIT" },
+              { e: "🥾", l: "Hiking" },
+            ].map(a => (
+              <span key={a.l} className="bg-[#141414] border border-neutral-800 rounded-full px-4 py-2 text-sm">
+                <span className="mr-1.5">{a.e}</span>{a.l}
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="px-4 py-16 bg-neutral-950">
+      <section className="px-4 py-16">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-10">How it works</h2>
           <div className="grid sm:grid-cols-3 gap-6">
-            <Step num={1} title="Take the quiz" desc="Tell us your goals in 60 seconds. Get your personalized macros & split." />
-            <Step num={2} title="Log daily" desc="Food, workouts, check-ins. Each log earns badges and builds your streak." />
-            <Step num={3} title="Transform" desc="Track progress over weeks, not days. 365-day grids show your grind." />
+            <Step num={1} title="Take the quiz" desc="60 seconds. Tell us your goal, schedule, equipment, dietary preferences." />
+            <Step num={2} title="Get your plan" desc="AI generates a structured plan. Pro Max gets a real coach review within 24h." />
+            <Step num={3} title="Log & transform" desc="Workouts, food, check-ins. See your strength in tigers. Earn badges." />
           </div>
+        </div>
+      </section>
+
+      {/* For Coaches */}
+      <section className="px-4 py-16 bg-neutral-950">
+        <div className="max-w-3xl mx-auto text-center">
+          <span className="text-[10px] uppercase tracking-widest text-amber-400 font-bold">For Coaches</span>
+          <h2 className="text-3xl font-bold mt-2 mb-3">Earn while you sleep.</h2>
+          <p className="text-neutral-400 mb-8">
+            Every AI plan from a Pro Max user is queued for human review. Claim a job, edit the plan in 10 minutes, get paid ₹50.
+            Build a roster of clients on the side.
+          </p>
+          <Link href="/login?mode=signup&role=trainer" className="inline-block bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-2xl px-8 py-3 transition-colors">
+            Sign up as a Coach →
+          </Link>
         </div>
       </section>
 
       {/* Pricing Teaser */}
       <section className="px-4 py-16">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-2">Start Free. Upgrade when you&apos;re ready.</h2>
-          <p className="text-neutral-500 mb-8">Every day you use GRITZONE in beta earns you 1 free Pro day at launch.</p>
+          <h2 className="text-3xl font-bold mb-2">Start Free. All features unlocked in beta.</h2>
+          <p className="text-neutral-500 mb-8">Every day you use GRITZONE in beta = 1 free Pro day at launch.</p>
           <div className="grid sm:grid-cols-3 gap-4">
-            <PlanTeaser name="Free" price="₹0" features={["Unlimited workouts", "Food logging", "4 custom regimes", "50+ badges"]} />
-            <PlanTeaser name="Pro" price="₹199" highlight features={["Everything in Free", "Unlimited regimes", "Personalized meal plans", "Smartwatch sync"]} />
-            <PlanTeaser name="Pro Max" price="₹399" features={["Everything in Pro", "AI food scanner", "Export data", "Priority support"]} />
+            <PlanTeaser name="Free" price="₹0" features={["Unlimited workouts", "Food logging", "Basic AI plans", "50+ badges"]} />
+            <PlanTeaser name="Pro" price="₹199" highlight features={["Everything in Free", "Unlimited AI plans", "Custom regimes", "Smartwatch sync"]} />
+            <PlanTeaser name="Pro Max" price="₹399" features={["Everything in Pro", "AI food scanner", "Human coach review", "Priority support"]} />
           </div>
           <Link href="/pro" className="inline-block mt-6 text-amber-500 hover:underline text-sm">View full plan comparison →</Link>
         </div>
@@ -122,7 +191,7 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="px-4 py-20">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-4xl font-black tracking-tight mb-4">Ready to earn your GRIT?</h2>
+          <h2 className="text-4xl font-black tracking-tight mb-4">Ready to lift a tiger?</h2>
           <p className="text-neutral-400 mb-6">Join the beta. Build the habit. Transform in public.</p>
           <Link href="/login?mode=signup" className="inline-block bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-2xl px-10 py-4 text-lg transition-colors">
             Start Your Grind →
@@ -158,6 +227,16 @@ function FeatureCard({ icon, title, desc, badge }: { icon: string; title: string
       </div>
       <h3 className="font-bold mb-1">{title}</h3>
       <p className="text-neutral-500 text-sm">{desc}</p>
+    </div>
+  );
+}
+
+function Pillar({ emoji, title, desc }: { emoji: string; title: string; desc: string }) {
+  return (
+    <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0e0e0e] border border-neutral-800 rounded-2xl p-5 text-center">
+      <div className="text-4xl mb-2" style={{ animation: "float 4s ease-in-out infinite" }}>{emoji}</div>
+      <h3 className="font-bold text-lg mb-1">{title}</h3>
+      <p className="text-neutral-500 text-sm leading-relaxed">{desc}</p>
     </div>
   );
 }

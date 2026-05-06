@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/useAuth";
+import { supabase } from "@/lib/supabase";
 import Nav from "@/components/Nav";
 import Link from "next/link";
 
 type FeedSettings = { showWorkouts: boolean; showFood: boolean; showCheckins: boolean };
+type AppRole = "client" | "trainer" | "nutritionist";
 
 function getSettings(): FeedSettings {
   if (typeof window === "undefined") return { showWorkouts: true, showFood: true, showCheckins: true };
@@ -14,9 +16,16 @@ function getSettings(): FeedSettings {
 }
 
 export default function SettingsPage() {
-  const { loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const [settings, setSettings] = useState<FeedSettings>(getSettings);
   const [saved, setSaved] = useState(false);
+  const [currentRole, setCurrentRole] = useState<AppRole>("client");
+  const [updatingRole, setUpdatingRole] = useState(false);
+  const [roleToast, setRoleToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (role) setCurrentRole(role);
+  }, [role]);
 
   function toggle(key: keyof FeedSettings) {
     setSettings(prev => {
@@ -28,6 +37,28 @@ export default function SettingsPage() {
     });
   }
 
+  async function applyRole(next: AppRole) {
+    if (!user || next === currentRole || updatingRole) return;
+    setUpdatingRole(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role: next })
+      .eq("id", user.id);
+    setUpdatingRole(false);
+    if (error) {
+      setRoleToast("Could not update: " + error.message);
+      setTimeout(() => setRoleToast(null), 3500);
+      return;
+    }
+    setCurrentRole(next);
+    setRoleToast(
+      next === "client"
+        ? "✓ You're back in client mode."
+        : `✓ You're now a ${next}. Open the trainer dashboard to start.`
+    );
+    setTimeout(() => setRoleToast(null), 4000);
+  }
+
   if (authLoading) {
     return <div className="flex items-center justify-center min-h-dvh"><div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
@@ -36,6 +67,43 @@ export default function SettingsPage() {
     <div className="min-h-dvh pb-24">
       <div className="max-w-lg mx-auto px-4 pt-6">
         <h1 className="text-xl font-bold mb-6">Settings</h1>
+
+        {/* Account role */}
+        <div className="bg-[#141414] rounded-2xl border border-neutral-800 p-4 mb-5">
+          <h2 className="text-sm font-semibold text-neutral-300 mb-1">Account type</h2>
+          <p className="text-xs text-neutral-500 mb-3">
+            One account, two hats. Coaches keep all client features (workouts, food log, checkins) and also get a trainer dashboard.
+          </p>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {(["client", "trainer", "nutritionist"] as const).map(r => (
+              <button
+                key={r}
+                onClick={() => applyRole(r)}
+                disabled={updatingRole}
+                className={`py-2.5 px-1 rounded-xl border text-[11px] font-semibold transition-all disabled:opacity-50 ${
+                  currentRole === r
+                    ? "bg-amber-500 border-amber-500 text-black"
+                    : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700"
+                }`}
+              >
+                <div className="text-base mb-0.5">{r === "client" ? "💪" : r === "trainer" ? "🏋️" : "🥗"}</div>
+                {r === "nutritionist" ? "Nutritionist" : r[0].toUpperCase() + r.slice(1)}
+              </button>
+            ))}
+          </div>
+          {(currentRole === "trainer" || currentRole === "nutritionist") && (
+            <Link
+              href="/trainer"
+              className="block text-center text-xs text-amber-500 hover:underline mt-2"
+            >
+              Open trainer dashboard →
+            </Link>
+          )}
+          {roleToast && <p className="text-xs text-emerald-400 mt-2">{roleToast}</p>}
+          <p className="text-[10px] text-neutral-600 mt-2 italic">
+            Beta: switch freely while we tune verification. Public launch will require ID + cert verification for coach roles.
+          </p>
+        </div>
 
         {/* Feed Settings */}
         <div className="bg-[#141414] rounded-2xl border border-neutral-800 p-4 mb-5">

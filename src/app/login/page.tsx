@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [role, setRole] = useState<"client" | "trainer" | "nutritionist">("client");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verifySent, setVerifySent] = useState(false);
 
   // If URL has ?mode=signup, start in signup mode
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function LoginPage() {
         password,
         options: {
           data: { display_name: displayName || email.split("@")[0], role },
-          emailRedirectTo: `${window.location.origin}/onboarding`,
+          emailRedirectTo: `${window.location.origin}${role === "client" ? "/onboarding" : "/trainer"}`,
         },
       });
       if (error) {
@@ -57,14 +58,36 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      if (authData.user) {
-        // Create profile row with chosen role
+
+      // Supabase returns a user with empty identities[] when the email is
+      // already registered. Treat that as "you already have an account".
+      // Telling them to sign in (and switch role from /settings) is far
+      // better than the silent "check your inbox" loop.
+      if (authData.user && (authData.user.identities?.length ?? 0) === 0) {
+        setLoading(false);
+        setError(
+          "An account already exists for this email. Sign in instead — you can switch to a coach role any time from Settings → Account type."
+        );
+        return;
+      }
+
+      // If Supabase requires email confirmation, no session is returned.
+      // Show "check your inbox" instead of redirecting (which would bounce
+      // back to /login and lose the role they picked).
+      if (authData.user && !authData.session) {
+        setLoading(false);
+        setError("");
+        setVerifySent(true);
+        return;
+      }
+
+      if (authData.user && authData.session) {
+        // Confirmed sessions: safe to write to DB now (RLS sees auth.uid()).
         await supabase.from("profiles").upsert({
           id: authData.user.id,
           display_name: displayName || email.split("@")[0],
           role,
         }, { onConflict: "id" });
-        // Auto-grant beta tester badge for clients only (trainers don't need fitness badges)
         if (role === "client") {
           await supabase.from("user_badges").upsert({
             user_id: authData.user.id,
@@ -106,6 +129,25 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh flex items-center justify-center p-6">
+      {verifySent ? (
+        <div className="w-full max-w-sm text-center">
+          <div className="text-5xl mb-4">📬</div>
+          <h1 className="text-2xl font-bold mb-2">Check your email</h1>
+          <p className="text-neutral-400 text-sm mb-6">
+            We sent a verification link to <span className="text-amber-500">{email}</span>.
+            Click it to activate your {role === "client" ? "account" : `${role} account`} and finish signing up.
+          </p>
+          <p className="text-[11px] text-neutral-600 mb-6">
+            Didn&apos;t arrive? Check spam, or try signing up again with a different email.
+          </p>
+          <button
+            onClick={() => { setVerifySent(false); setMode("login"); }}
+            className="text-amber-500 text-sm hover:underline"
+          >
+            ← Back to sign in
+          </button>
+        </div>
+      ) : (
       <div className="w-full max-w-sm">
         <Link
           href="/"
@@ -225,6 +267,7 @@ export default function LoginPage() {
           </button>
         </p>
       </div>
+      )}
     </div>
   );
 }

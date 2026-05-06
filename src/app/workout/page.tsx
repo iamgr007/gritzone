@@ -20,6 +20,8 @@ type WorkoutSet = {
   set_number: number;
   weight_kg: string;
   reps: string;
+  duration_seconds: string; // for time/time_distance/flow tracking modes
+  distance_meters: string;  // for distance/time_distance tracking modes
   target_reps?: string;   // e.g. "8-12" from regime
   suggested_kg?: string;  // progressive overload hint (prev best + 2.5)
   set_type: SetType;
@@ -201,6 +203,8 @@ export default function WorkoutPage() {
           set_number: i + 1,
           weight_kg: "",
           reps: "",
+          duration_seconds: "",
+          distance_meters: "",
           target_reps: e.reps,
           suggested_kg: suggestedKg,
           set_type: "normal",
@@ -233,7 +237,10 @@ export default function WorkoutPage() {
     if (ex.category === "dumbbell") return 75;
     if (ex.category === "cable") return 60;
     if (ex.category === "bodyweight") return 60;
+    if (ex.category === "calisthenics") return 60;
     if (ex.category === "cardio") return 30;
+    if (ex.category === "run" || ex.category === "swim" || ex.category === "cycle") return 60;
+    if (ex.category === "yoga") return 0;
     return defaultRest;
   }
 
@@ -244,7 +251,7 @@ export default function WorkoutPage() {
       ...prev,
       {
         exercise: ex,
-        sets: [{ exercise: ex, set_number: 1, weight_kg: "", reps: "", suggested_kg: suggestedKg, set_type: "normal", is_warmup: false, done: false }],
+        sets: [{ exercise: ex, set_number: 1, weight_kg: "", reps: "", duration_seconds: "", distance_meters: "", suggested_kg: suggestedKg, set_type: "normal", is_warmup: false, done: false }],
         prevBest: best,
         restSeconds: suggestRestForExercise(ex),
       },
@@ -264,6 +271,8 @@ export default function WorkoutPage() {
         set_number: group.sets.length + 1,
         weight_kg: lastSet?.weight_kg || "",
         reps: lastSet?.reps || "",
+        duration_seconds: lastSet?.duration_seconds || "",
+        distance_meters: lastSet?.distance_meters || "",
         target_reps: lastSet?.target_reps,
         suggested_kg: lastSet?.suggested_kg,
         set_type: "normal",
@@ -379,16 +388,22 @@ export default function WorkoutPage() {
 
     if (workout) {
       const allSets = exercises.flatMap((group) =>
-        group.sets.filter((s) => s.done).map((s) => ({
-          workout_id: workout.id,
-          exercise_name: group.exercise.name,
-          muscle_group: group.exercise.muscle,
-          set_number: s.set_number,
-          weight_kg: parseFloat(s.weight_kg) || 0,
-          reps: parseInt(s.reps) || 0,
-          is_warmup: s.set_type === "warmup",
-          set_type: s.set_type,
-        }))
+        group.sets.filter((s) => s.done).map((s) => {
+          const dur = parseFloat(s.duration_seconds);
+          const dist = parseFloat(s.distance_meters);
+          return {
+            workout_id: workout.id,
+            exercise_name: group.exercise.name,
+            muscle_group: group.exercise.muscle,
+            set_number: s.set_number,
+            weight_kg: parseFloat(s.weight_kg) || 0,
+            reps: parseInt(s.reps) || 0,
+            duration_seconds: isFinite(dur) && dur > 0 ? Math.round(dur) : null,
+            distance_meters: isFinite(dist) && dist > 0 ? Math.round(dist) : null,
+            is_warmup: s.set_type === "warmup",
+            set_type: s.set_type,
+          };
+        })
       );
       if (allSets.length > 0) {
         await supabase.from("workout_sets").insert(allSets);
@@ -509,19 +524,27 @@ export default function WorkoutPage() {
                   <button onClick={() => removeExercise(exIdx)} className="text-neutral-600 hover:text-red-400 text-xs p-1 ml-2">✕</button>
                 </div>
 
-                {/* Set Header */}
-                <div className="grid grid-cols-[32px_60px_1fr_1fr_36px] gap-1 px-3 py-2 text-[10px] text-neutral-500 uppercase">
-                  <span>Set</span>
-                  <span>Type</span>
-                  <span>kg</span>
-                  <span>Reps</span>
-                  <span></span>
-                </div>
+                {/* Set Header — varies by tracking mode */}
+                {(() => {
+                  const mode = group.exercise.tracking_mode;
+                  const headerCols =
+                    mode === "time" ? <><span>Set</span><span>Type</span><span>Time</span><span></span><span></span></>
+                    : mode === "distance" ? <><span>Set</span><span>Type</span><span>Distance</span><span></span><span></span></>
+                    : mode === "time_distance" ? <><span>Set</span><span>Type</span><span>Time</span><span>Dist</span><span></span></>
+                    : mode === "flow" ? <><span>Set</span><span>Type</span><span>Time</span><span></span><span></span></>
+                    : <><span>Set</span><span>Type</span><span>kg</span><span>Reps</span><span></span></>;
+                  return (
+                    <div className="grid grid-cols-[32px_60px_1fr_1fr_36px] gap-1 px-3 py-2 text-[10px] text-neutral-500 uppercase">
+                      {headerCols}
+                    </div>
+                  );
+                })()}
 
                 {/* Sets */}
                 {group.sets.map((set, setIdx) => {
                   const typeLabel: Record<SetType, string> = { normal: "—", warmup: "W", drop: "D", failure: "F", amrap: "A" };
                   const typeColor: Record<SetType, string> = { normal: "text-neutral-300", warmup: "text-neutral-500", drop: "text-purple-400", failure: "text-red-400", amrap: "text-amber-400" };
+                  const mode = group.exercise.tracking_mode;
                   return (
                     <div
                       key={setIdx}
@@ -543,22 +566,75 @@ export default function WorkoutPage() {
                         <option value="failure">Failure</option>
                         <option value="amrap">AMRAP</option>
                       </select>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        placeholder={set.suggested_kg || "0"}
-                        value={set.weight_kg}
-                        onChange={(e) => updateSet(exIdx, setIdx, "weight_kg", e.target.value)}
-                        className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
-                      />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder={set.target_reps || "0"}
-                        value={set.reps}
-                        onChange={(e) => updateSet(exIdx, setIdx, "reps", e.target.value)}
-                        className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
-                      />
+
+                      {/* Mode-specific input columns */}
+                      {(mode === "time" || mode === "flow") && (
+                        <>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="min"
+                            value={set.duration_seconds ? (parseFloat(set.duration_seconds) / 60).toString() : ""}
+                            onChange={(e) => updateSet(exIdx, setIdx, "duration_seconds", e.target.value ? (parseFloat(e.target.value) * 60).toString() : "")}
+                            className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                          />
+                          <span className="text-[10px] text-neutral-600 text-center">min</span>
+                        </>
+                      )}
+                      {mode === "distance" && (
+                        <>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="km"
+                            value={set.distance_meters ? (parseFloat(set.distance_meters) / 1000).toString() : ""}
+                            onChange={(e) => updateSet(exIdx, setIdx, "distance_meters", e.target.value ? (parseFloat(e.target.value) * 1000).toString() : "")}
+                            className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                          />
+                          <span className="text-[10px] text-neutral-600 text-center">km</span>
+                        </>
+                      )}
+                      {mode === "time_distance" && (
+                        <>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="min"
+                            value={set.duration_seconds ? (parseFloat(set.duration_seconds) / 60).toString() : ""}
+                            onChange={(e) => updateSet(exIdx, setIdx, "duration_seconds", e.target.value ? (parseFloat(e.target.value) * 60).toString() : "")}
+                            className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                          />
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="km"
+                            value={set.distance_meters ? (parseFloat(set.distance_meters) / 1000).toString() : ""}
+                            onChange={(e) => updateSet(exIdx, setIdx, "distance_meters", e.target.value ? (parseFloat(e.target.value) * 1000).toString() : "")}
+                            className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                          />
+                        </>
+                      )}
+                      {mode === "sets_reps" && (
+                        <>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder={set.suggested_kg || "0"}
+                            value={set.weight_kg}
+                            onChange={(e) => updateSet(exIdx, setIdx, "weight_kg", e.target.value)}
+                            className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                          />
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder={set.target_reps || "0"}
+                            value={set.reps}
+                            onChange={(e) => updateSet(exIdx, setIdx, "reps", e.target.value)}
+                            className="!bg-neutral-900 !border-neutral-700 !rounded-lg !py-1.5 !px-2 text-center text-sm placeholder:text-neutral-600"
+                          />
+                        </>
+                      )}
+
                       <button
                         onClick={() => updateSet(exIdx, setIdx, "done", !set.done)}
                         className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors ${

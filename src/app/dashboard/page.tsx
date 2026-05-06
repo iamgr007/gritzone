@@ -9,6 +9,7 @@ import type { CheckIn, Profile } from "@/lib/types";
 import { BADGE_MAP } from "@/lib/badges";
 import { getLevel, formatXP, XP_ACTIONS } from "@/lib/xp";
 import { computeStreakFromDates, localDateStr, backfillAllBadges } from "@/lib/badges-award";
+import { getStrengthAnalogy, nextStrengthAnalogy, getStreakHype } from "@/lib/analogies";
 
 function todayStr() { return localDateStr(); }
 
@@ -60,17 +61,24 @@ export default function DashboardPage() {
   const [totalCheckins, setTotalCheckins] = useState(0);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [totalFoodLogs, setTotalFoodLogs] = useState(0);
+  const [totalLifted, setTotalLifted] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     async function load() {
-      const [profileRes, todayRes, allRes, checkinCountRes, workoutCountRes, foodCountRes] = await Promise.all([
+      const [profileRes, todayRes, allRes, checkinCountRes, workoutCountRes, foodCountRes, setsRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user!.id).single(),
         supabase.from("checkins").select("*").eq("user_id", user!.id).eq("date", todayStr()).maybeSingle(),
         supabase.from("checkins").select("*").eq("user_id", user!.id).order("date", { ascending: false }).limit(30),
         supabase.from("checkins").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
         supabase.from("workouts").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
         supabase.from("food_logs").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+        // Pull all of this user's sets and reduce client-side. For typical
+        // users this stays well under a few thousand rows; we can move this
+        // to a SQL aggregate later if needed.
+        supabase.from("workout_sets")
+          .select("weight_kg, reps, workout_id, workouts!inner(user_id)")
+          .eq("workouts.user_id", user!.id),
       ]);
       setProfile(profileRes.data);
       setTodayCheckin(todayRes.data);
@@ -79,6 +87,9 @@ export default function DashboardPage() {
       setTotalCheckins(checkinCountRes.count ?? 0);
       setTotalWorkouts(workoutCountRes.count ?? 0);
       setTotalFoodLogs(foodCountRes.count ?? 0);
+      const sets = (setsRes.data ?? []) as { weight_kg: number | null; reps: number | null }[];
+      const total = sets.reduce((s, r) => s + (Number(r.weight_kg) || 0) * (Number(r.reps) || 0), 0);
+      setTotalLifted(total);
       setLoading(false);
     }
     load();
@@ -273,6 +284,54 @@ export default function DashboardPage() {
           </p>
         </Link>
 
+        {/* Strength analogy card — fun stat */}
+        <StrengthCard totalLifted={totalLifted} totalWorkouts={totalWorkouts} />
+
+        {/* Streak hype line */}
+        <StreakHype streak={streak} />
+
+        {/* Suggested for today — quest-style nudges */}
+        <SuggestedToday
+          todayCheckin={todayCheckin}
+          streak={streak}
+          totalWorkouts={totalWorkouts}
+          totalFoodLogs={totalFoodLogs}
+        />
+
+        {/* AI Coach hero (NEW) */}
+        <Link
+          href="/ai-coach"
+          className="block mb-3 bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/40 hover:border-amber-500/60 rounded-2xl p-4 transition-all relative overflow-hidden"
+        >
+          <span className="absolute top-2 right-2 text-[8px] bg-amber-500 text-black px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">✨</span>
+            <div className="flex-1">
+              <p className="text-base font-bold">AI Coach</p>
+              <p className="text-[11px] text-neutral-400">Generate workout & diet plans for any goal — gym, calisthenics, yoga, run, swim</p>
+            </div>
+            <span className="text-amber-500 text-xl">→</span>
+          </div>
+        </Link>
+
+        {/* Universal workouts CTA (NEW) */}
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <Link href="/workout" className="bg-gradient-to-br from-emerald-500/15 to-transparent border border-emerald-500/30 hover:border-emerald-500/60 rounded-2xl p-3 transition-all">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl">💪</span>
+              <p className="text-sm font-bold">Workout</p>
+            </div>
+            <p className="text-[10px] text-neutral-500">Lifts · cardio · yoga · runs</p>
+          </Link>
+          <Link href="/regimes" className="bg-gradient-to-br from-blue-500/15 to-transparent border border-blue-500/30 hover:border-blue-500/60 rounded-2xl p-3 transition-all">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl">📋</span>
+              <p className="text-sm font-bold">Regimes</p>
+            </div>
+            <p className="text-[10px] text-neutral-500">Saved templates</p>
+          </Link>
+        </div>
+
         {/* Quick Actions: Quests + Rewards */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <Link href="/quests" className="bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-amber-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
@@ -301,6 +360,20 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-bold">Ranks</p>
               <p className="text-[10px] text-neutral-500">Leaderboard</p>
+            </div>
+          </Link>
+          <Link href="/my-trainer" className="bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-purple-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
+            <span className="text-2xl">👥</span>
+            <div>
+              <p className="text-sm font-bold">My Coaches</p>
+              <p className="text-[10px] text-neutral-500">Trainer · Nutritionist</p>
+            </div>
+          </Link>
+          <Link href="/food" className="bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-pink-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
+            <span className="text-2xl">🍽️</span>
+            <div>
+              <p className="text-sm font-bold">Food Log</p>
+              <p className="text-[10px] text-neutral-500">AI photo macros</p>
             </div>
           </Link>
           <Link href="/ebooks" className="col-span-2 bg-[#141414] hover:bg-[#1a1a1a] border border-neutral-800 hover:border-amber-500/30 rounded-2xl p-3 flex items-center gap-2 transition-all">
@@ -516,6 +589,164 @@ function StatCard({ label, value, color }: { label: string; value: string; color
     </div>
   );
 }
+
+function StrengthCard({ totalLifted, totalWorkouts }: { totalLifted: number; totalWorkouts: number }) {
+  if (totalWorkouts === 0) {
+    return (
+      <Link
+        href="/workout"
+        className="block mb-3 bg-gradient-to-br from-orange-500/15 via-red-500/5 to-transparent border border-orange-500/30 hover:border-orange-500/60 rounded-2xl p-4 transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-4xl">💪</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold">Log your first set</p>
+            <p className="text-[11px] text-neutral-400">We&apos;ll show you what you&apos;ve lifted in tigers, trucks &amp; whales.</p>
+          </div>
+          <span className="text-orange-400 text-xl">→</span>
+        </div>
+      </Link>
+    );
+  }
+  const cur = getStrengthAnalogy(totalLifted);
+  const next = nextStrengthAnalogy(totalLifted);
+  const remaining = next ? next.kg - totalLifted : 0;
+  const progress = next ? Math.min(100, Math.max(0, ((totalLifted - cur.kg) / (next.kg - cur.kg)) * 100)) : 100;
+  const formatted = totalLifted >= 1000
+    ? `${(totalLifted / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}t`
+    : `${Math.round(totalLifted).toLocaleString()}kg`;
+
+  return (
+    <div className="mb-3 bg-gradient-to-br from-red-500/15 via-orange-500/10 to-transparent border border-orange-500/30 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className="text-[10px] uppercase text-orange-300 tracking-widest font-bold">Total lifted</p>
+          <p className="text-2xl font-black">{formatted}</p>
+        </div>
+        <div className="text-5xl animate-pulse-slow" style={{ animation: "float 3s ease-in-out infinite" }}>{cur.emoji}</div>
+      </div>
+      <p className="text-sm font-bold">You&apos;ve lifted {cur.label}</p>
+      <p className="text-[11px] text-neutral-400 leading-snug">{cur.detail}</p>
+      {next && (
+        <div className="mt-3">
+          <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-orange-600 via-orange-400 to-amber-300 transition-all duration-700"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-neutral-500 mt-1.5 flex items-center justify-between">
+            <span>Next: {next.emoji} {next.label}</span>
+            <span>{remaining >= 1000 ? `${(remaining / 1000).toFixed(1)}t to go` : `${Math.round(remaining)}kg to go`}</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StreakHype({ streak }: { streak: number }) {
+  const hype = getStreakHype(streak);
+  return (
+    <div className="mb-3 bg-[#141414] border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+      <span className="text-2xl">{hype.emoji}</span>
+      <p className="text-xs text-neutral-300 flex-1 leading-snug">{hype.line}</p>
+    </div>
+  );
+}
+
+type Suggestion = { icon: string; title: string; sub: string; href: string; color: string };
+
+function SuggestedToday({ todayCheckin, streak, totalWorkouts, totalFoodLogs }: {
+  todayCheckin: CheckIn | null;
+  streak: number;
+  totalWorkouts: number;
+  totalFoodLogs: number;
+}) {
+  const suggestions: Suggestion[] = [];
+
+  if (!todayCheckin) {
+    suggestions.push({
+      icon: "✅",
+      title: "Daily check-in",
+      sub: streak > 0 ? `Don't break your ${streak}-day streak` : "Weight, sleep, water — 30 sec",
+      href: "/checkin",
+      color: "text-amber-400 border-amber-500/30",
+    });
+  } else if (!todayCheckin.workout_done) {
+    suggestions.push({
+      icon: "💪",
+      title: "Log a workout",
+      sub: "Lifts, yoga, run, calisthenics — anything counts",
+      href: "/workout",
+      color: "text-emerald-400 border-emerald-500/30",
+    });
+  }
+
+  if (totalWorkouts < 3) {
+    suggestions.push({
+      icon: "✨",
+      title: "Get an AI plan",
+      sub: "60 sec quiz → custom workout & diet plan",
+      href: "/ai-coach",
+      color: "text-amber-400 border-amber-500/40",
+    });
+  }
+
+  if (totalFoodLogs === 0) {
+    suggestions.push({
+      icon: "📷",
+      title: "Snap a meal",
+      sub: "AI reads your plate and logs macros",
+      href: "/food",
+      color: "text-pink-400 border-pink-500/30",
+    });
+  }
+
+  if (streak >= 3 && streak < 7) {
+    suggestions.push({
+      icon: "🔥",
+      title: `${7 - streak} days to a 7-day streak`,
+      sub: "Most users quit before day 7. Don't be most users.",
+      href: "/checkin",
+      color: "text-orange-400 border-orange-500/30",
+    });
+  }
+
+  // Always available evergreens
+  suggestions.push({
+    icon: "🎯",
+    title: "Today's quests",
+    sub: "Stack XP for free Pro days",
+    href: "/quests",
+    color: "text-purple-400 border-purple-500/30",
+  });
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <p className="text-[10px] uppercase text-neutral-500 tracking-widest font-bold mb-2">Suggested for you</p>
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
+        {suggestions.slice(0, 4).map((s, i) => (
+          <Link
+            key={i}
+            href={s.href}
+            className={`shrink-0 snap-start w-[78%] bg-[#141414] border rounded-2xl p-3 flex items-center gap-2.5 ${s.color}`}
+          >
+            <span className="text-2xl">{s.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold truncate">{s.title}</p>
+              <p className="text-[10px] text-neutral-500 truncate">{s.sub}</p>
+            </div>
+            <span className="text-neutral-500">→</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 function WeightChart({ data }: { data: CheckIn[] }) {
   const weights = data.map((d) => d.morning_weight).filter((w): w is number => w !== null);

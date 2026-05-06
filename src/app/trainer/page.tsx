@@ -172,12 +172,31 @@ export default function TrainerDashboardPage() {
       </header>
 
       <div className="max-w-3xl mx-auto px-4 pt-6">
+        <div className="flex items-center gap-3 mb-4 text-xs">
+          <Link href="/dashboard" className="text-amber-500 hover:underline">💪 My fitness →</Link>
+          <span className="text-neutral-700">·</span>
+          <Link href="/settings" className="text-neutral-400 hover:text-neutral-200">⚙️ Settings</Link>
+        </div>
         <h1 className="text-2xl font-bold mb-1">Your Roster</h1>
         <p className="text-neutral-500 text-sm mb-5">
           {isNutritionist
             ? "Track every client's meals, macros, weight, and adherence in one place."
             : "Track every client's workouts, diet, and adherence in one place."}
         </p>
+
+        {/* AI Review Queue CTA */}
+        <Link
+          href="/trainer/queue"
+          className="block mb-5 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 hover:border-amber-500/60 rounded-2xl p-4 transition-colors"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold">✨ AI Plan Review Queue</p>
+              <p className="text-[11px] text-neutral-400">Earn ₹50 per review · 24h SLA</p>
+            </div>
+            <span className="text-amber-500 text-lg">→</span>
+          </div>
+        </Link>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 mb-6">
