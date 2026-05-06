@@ -4,18 +4,36 @@ import { useEffect, useState } from "react";
 import { supabase, ensureProfile } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-export function useAuth() {
+export type AppRole = "client" | "trainer";
+
+export function useAuth(opts: { requireRole?: AppRole } = {}) {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let alive = true;
     supabase.auth.getUser().then(async ({ data }) => {
+      if (!alive) return;
       if (!data.user) {
         window.location.href = "/login";
         return;
       }
-      // Ensure profile exists (fixes FK violations if onboarding was skipped)
       await ensureProfile(data.user);
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      const userRole = (prof?.role as AppRole) || "client";
+
+      // Enforce required role: bounce to the right home
+      if (opts.requireRole && userRole !== opts.requireRole) {
+        window.location.replace(userRole === "trainer" ? "/trainer" : "/dashboard");
+        return;
+      }
+
+      setRole(userRole);
       setUser(data.user);
       setLoading(false);
     });
@@ -28,8 +46,8 @@ export function useAuth() {
       setUser(session.user);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => { alive = false; subscription.unsubscribe(); };
+  }, [opts.requireRole]);
 
-  return { user, loading };
+  return { user, role, loading };
 }

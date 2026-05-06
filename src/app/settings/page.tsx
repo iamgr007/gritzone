@@ -119,6 +119,17 @@ export default function SettingsPage() {
             </div>
             <span className="text-neutral-500">→</span>
           </Link>
+
+          <Link href="/my-trainer" className="flex items-center justify-between bg-[#141414] rounded-2xl border border-neutral-800 p-4 hover:border-amber-500/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🏆</span>
+              <div>
+                <p className="font-semibold text-sm">My Trainer</p>
+                <p className="text-[10px] text-neutral-500">Connect with your coach using their invite code</p>
+              </div>
+            </div>
+            <span className="text-neutral-500">→</span>
+          </Link>
         </div>
 
         {/* Legal & account */}

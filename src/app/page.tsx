@@ -8,10 +8,14 @@ export default function LandingPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (data.user) {
-        // Use replace so back from dashboard doesn't bounce back here.
-        window.location.replace("/dashboard");
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        window.location.replace(prof?.role === "trainer" ? "/trainer" : "/dashboard");
       } else {
         setChecking(false);
       }

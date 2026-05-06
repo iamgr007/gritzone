@@ -45,7 +45,7 @@ function getFeedSettings(): FeedSettings {
 }
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth({ requireRole: "client" });
   const [todayCheckin, setTodayCheckin] = useState<CheckIn | null>(null);
   const [recentCheckins, setRecentCheckins] = useState<CheckIn[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);

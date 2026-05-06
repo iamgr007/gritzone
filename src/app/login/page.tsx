@@ -11,13 +11,15 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [role, setRole] = useState<"client" | "trainer">("client");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // If URL has ?mode=signup, start in signup mode
   useEffect(() => {
-    const m = new URLSearchParams(window.location.search).get("mode");
-    if (m === "signup") setMode("signup");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("mode") === "signup") setMode("signup");
+    if (params.get("role") === "trainer") { setMode("signup"); setRole("trainer"); }
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,7 +44,7 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          data: { display_name: displayName || email.split("@")[0] },
+          data: { display_name: displayName || email.split("@")[0], role },
           emailRedirectTo: `${window.location.origin}/onboarding`,
         },
       });
@@ -51,15 +53,23 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      // Auto-grant beta tester badge
       if (authData.user) {
-        await supabase.from("user_badges").upsert({
-          user_id: authData.user.id,
-          badge_key: "beta_tester",
-          earned_at: new Date().toISOString(),
-        }, { onConflict: "user_id,badge_key" }).then(() => {});
+        // Create profile row with chosen role
+        await supabase.from("profiles").upsert({
+          id: authData.user.id,
+          display_name: displayName || email.split("@")[0],
+          role,
+        }, { onConflict: "id" });
+        // Auto-grant beta tester badge for clients only (trainers don't need fitness badges)
+        if (role === "client") {
+          await supabase.from("user_badges").upsert({
+            user_id: authData.user.id,
+            badge_key: "beta_tester",
+            earned_at: new Date().toISOString(),
+          }, { onConflict: "user_id,badge_key" });
+        }
       }
-      window.location.href = "/onboarding";
+      window.location.href = role === "trainer" ? "/trainer" : "/onboarding";
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -70,13 +80,20 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      // Ensure profile row exists (might be missing if onboarding was skipped)
       const { data: { user: loginUser } } = await supabase.auth.getUser();
       if (loginUser) {
         await supabase.from("profiles").upsert({
           id: loginUser.id,
           display_name: loginUser.user_metadata?.display_name || loginUser.email?.split("@")[0] || "user",
         }, { onConflict: "id", ignoreDuplicates: true });
+        // Read back role to redirect
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", loginUser.id)
+          .maybeSingle();
+        window.location.href = prof?.role === "trainer" ? "/trainer" : "/dashboard";
+        return;
       }
       window.location.href = "/dashboard";
     }
@@ -101,6 +118,32 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {mode === "signup" && (
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1.5">I&apos;m signing up as</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRole("client")}
+                  className={`py-3 rounded-xl border text-sm font-semibold transition-all ${role === "client" ? "bg-amber-500 border-amber-500 text-black" : "bg-neutral-900 border-neutral-800 text-neutral-300"}`}
+                >
+                  <div className="text-base mb-0.5">💪</div>
+                  Client
+                  <p className={`text-[10px] font-normal mt-0.5 ${role === "client" ? "text-black/70" : "text-neutral-500"}`}>Track my fitness</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("trainer")}
+                  className={`py-3 rounded-xl border text-sm font-semibold transition-all ${role === "trainer" ? "bg-amber-500 border-amber-500 text-black" : "bg-neutral-900 border-neutral-800 text-neutral-300"}`}
+                >
+                  <div className="text-base mb-0.5">🏆</div>
+                  Trainer
+                  <p className={`text-[10px] font-normal mt-0.5 ${role === "trainer" ? "text-black/70" : "text-neutral-500"}`}>Manage my clients</p>
+                </button>
+              </div>
+            </div>
+          )}
+
           {mode === "signup" && (
             <div>
               <label className="block text-sm text-neutral-400 mb-1.5">Display Name</label>
