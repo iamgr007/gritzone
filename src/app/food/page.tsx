@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import AppHeader from "@/components/AppHeader";
+import MicButton from "@/components/MicButton";
 import { incrementQuestProgress } from "@/lib/quests-client";
 import { searchFoods, getPopularFoods, calcNutrition, type FoodItem } from "@/lib/food-data";
 
@@ -457,6 +458,10 @@ export default function FoodPage() {
                   className="!bg-transparent !border-0 !p-0 text-lg !rounded-none"
                 />
               </div>
+              <MicButton
+                size="sm"
+                onTranscript={(t) => { setSearchQuery(t); setSelectedFood(null); setShowCustom(false); }}
+              />
             </div>
 
             {/* Selected Food — Detail + Quantity */}

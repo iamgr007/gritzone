@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
+import WaterWidget from "@/components/WaterWidget";
 import Link from "next/link";
 import type { CheckIn, Profile } from "@/lib/types";
 import { BADGE_MAP } from "@/lib/badges";
@@ -102,6 +103,10 @@ export default function DashboardPage() {
     if (!user) return;
     import("@/lib/push").then(({ registerPush }) => {
       registerPush(user).catch(() => {});
+    });
+    // Schedule hydration local-notifications if user has them enabled (default on)
+    import("@/lib/hydration").then(({ ensureHydrationReminders }) => {
+      ensureHydrationReminders().catch(() => {});
     });
   }, [user]);
 
@@ -353,6 +358,9 @@ export default function DashboardPage() {
             <span className="text-purple-300 text-xl">→</span>
           </div>
         </Link>
+
+        {/* Hydration tracker */}
+        <WaterWidget />
 
         {/* Universal workouts CTA (NEW) */}
         <div className="grid grid-cols-2 gap-3 mb-3">

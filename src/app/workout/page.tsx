@@ -7,6 +7,7 @@ import Nav from "@/components/Nav";
 import AppHeader from "@/components/AppHeader";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import BodyMap from "@/components/BodyMap";
+import MicButton from "@/components/MicButton";
 import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
 import { celebrate, haptic } from "@/lib/celebrate";
@@ -762,13 +763,21 @@ export default function WorkoutPage() {
                 );
               })()}
 
-              <textarea
-                rows={2}
-                placeholder="Any notes about this workout..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="mb-3"
-              />
+              <div className="relative mb-3">
+                <textarea
+                  rows={2}
+                  placeholder="Any notes about this workout..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="!mb-0 pr-12"
+                />
+                <div className="absolute right-2 top-2">
+                  <MicButton
+                    size="sm"
+                    onTranscript={(t) => setNotes(t)}
+                  />
+                </div>
+              </div>
 
               {/* Workout Photo */}
               <div className="mb-2">

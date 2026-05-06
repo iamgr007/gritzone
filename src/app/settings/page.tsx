@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/useAuth";
 import { supabase } from "@/lib/supabase";
 import Nav from "@/components/Nav";
 import Link from "next/link";
+import { hydrationRemindersEnabled, setHydrationReminders } from "@/lib/hydration";
 
 type FeedSettings = { showWorkouts: boolean; showFood: boolean; showCheckins: boolean };
 type AppRole = "client" | "trainer" | "nutritionist";
@@ -19,6 +20,7 @@ export default function SettingsPage() {
   const { user, role, loading: authLoading } = useAuth();
   const [settings, setSettings] = useState<FeedSettings>(getSettings);
   const [saved, setSaved] = useState(false);
+  const [hydrate, setHydrate] = useState(true);
   const [currentRole, setCurrentRole] = useState<AppRole>("client");
   const [updatingRole, setUpdatingRole] = useState(false);
   const [roleToast, setRoleToast] = useState<string | null>(null);
@@ -26,6 +28,16 @@ export default function SettingsPage() {
   useEffect(() => {
     if (role) setCurrentRole(role);
   }, [role]);
+
+  useEffect(() => {
+    setHydrate(hydrationRemindersEnabled());
+  }, []);
+
+  async function toggleHydrate() {
+    const next = !hydrate;
+    setHydrate(next);
+    await setHydrationReminders(next);
+  }
 
   function toggle(key: keyof FeedSettings) {
     setSettings(prev => {
@@ -117,6 +129,17 @@ export default function SettingsPage() {
           </div>
 
           {saved && <p className="text-xs text-green-400 mt-3">✓ Saved</p>}
+        </div>
+
+        {/* Reminders */}
+        <div className="bg-[#141414] rounded-2xl border border-neutral-800 p-4 mb-5">
+          <h2 className="text-sm font-semibold text-neutral-300 mb-3">Reminders</h2>
+          <Toggle
+            label="Hydration reminders"
+            description="💧 6 gentle nudges through the day to drink water (mobile app only)"
+            checked={hydrate}
+            onChange={toggleHydrate}
+          />
         </div>
 
         {/* Smartwatch Integration */}
