@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/useAuth";
+import { supabase } from "@/lib/supabase";
 import Nav from "@/components/Nav";
 import { startPayUCheckout, PayUPlan } from "@/lib/payu";
 
@@ -75,11 +75,24 @@ const PLANS: Array<{
 ];
 
 export default function ProPage() {
-  const { loading: authLoading } = useAuth();
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [billing, setBilling] = useState<Billing>("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [isNative, setIsNative] = useState(false);
+
+  // Track auth state without forcing a redirect (so /pro is browsable when logged out
+  // and the browser back button doesn't ping-pong between /pro and /login).
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (alive) setSignedIn(!!data.user);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSignedIn(!!session?.user);
+    });
+    return () => { alive = false; subscription.unsubscribe(); };
+  }, []);
 
   // Detect Capacitor native (Android/iOS) — Play Store policy disallows
   // 3rd-party payment for digital subscriptions inside the app.
@@ -121,6 +134,11 @@ export default function ProPage() {
 
   async function handleUpgrade(planKey: string) {
     if (planKey === "free") return;
+    if (!signedIn) {
+      // Bring them to login, then back here. Use replace so /login doesn't end up in history twice.
+      window.location.href = `/login?next=${encodeURIComponent("/pro")}`;
+      return;
+    }
     // Native (Android/iOS): we render an <a target="_blank"> instead of a button so
     // Capacitor's webview opens the system browser. handleUpgrade only runs for web.
     if (isNative) return;
@@ -135,7 +153,7 @@ export default function ProPage() {
     // Note: on success, PayU redirects away — this component unmounts
   }
 
-  if (authLoading) {
+  if (signedIn === null) {
     return <div className="flex items-center justify-center min-h-dvh"><div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
@@ -282,7 +300,7 @@ export default function ProPage() {
           </div>
         </div>
       </div>
-      <Nav />
+      {signedIn && <Nav />}
     </div>
   );
 }

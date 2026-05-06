@@ -10,6 +10,7 @@ import { BADGE_MAP } from "@/lib/badges";
 import { getLevel, formatXP, XP_ACTIONS } from "@/lib/xp";
 import { computeStreakFromDates, localDateStr, backfillAllBadges } from "@/lib/badges-award";
 import { getStrengthAnalogy, nextStrengthAnalogy, getStreakHype } from "@/lib/analogies";
+import { shareOrDownload } from "@/lib/share";
 
 function todayStr() { return localDateStr(); }
 
@@ -641,6 +642,23 @@ function StrengthCard({ totalLifted, totalWorkouts }: { totalLifted: number; tot
           </p>
         </div>
       )}
+      <button
+        type="button"
+        onClick={() => shareOrDownload(
+          {
+            label: "Total lifted",
+            value: formatted,
+            emoji: cur.emoji,
+            headline: `I just lifted ${cur.label} ${cur.emoji}`,
+            subline: cur.detail,
+            gradient: ["#1a0f0a", "#0a0a0a"],
+          },
+          `I just lifted ${cur.label} on GRITZONE 💪`
+        )}
+        className="mt-3 w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold rounded-lg py-2 transition-colors flex items-center justify-center gap-1.5"
+      >
+        <span>📤</span> Share to Stories / WhatsApp / Twitter
+      </button>
     </div>
   );
 }
@@ -651,6 +669,26 @@ function StreakHype({ streak }: { streak: number }) {
     <div className="mb-3 bg-[#141414] border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
       <span className="text-2xl">{hype.emoji}</span>
       <p className="text-xs text-neutral-300 flex-1 leading-snug">{hype.line}</p>
+      {streak >= 3 && (
+        <button
+          type="button"
+          onClick={() => shareOrDownload(
+            {
+              label: "Streak",
+              value: `${streak} days`,
+              emoji: hype.emoji,
+              headline: `${streak}-day streak. Still grinding.`,
+              subline: hype.line,
+              gradient: ["#0d1a14", "#0a0a0a"],
+            },
+            `${streak} days strong on GRITZONE 🔥`
+          )}
+          className="text-neutral-500 hover:text-amber-400 text-xs px-2 py-1 transition-colors"
+          aria-label="Share streak"
+        >
+          📤
+        </button>
+      )}
     </div>
   );
 }
