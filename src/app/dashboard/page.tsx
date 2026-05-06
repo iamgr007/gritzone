@@ -63,6 +63,7 @@ export default function DashboardPage() {
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [totalFoodLogs, setTotalFoodLogs] = useState(0);
   const [totalLifted, setTotalLifted] = useState(0);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -102,6 +103,23 @@ export default function DashboardPage() {
     import("@/lib/push").then(({ registerPush }) => {
       registerPush(user).catch(() => {});
     });
+  }, [user]);
+
+  // Unread notifications counter (drives the bell badge).
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const refresh = async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .is("read_at", null);
+      if (alive) setUnreadNotifs(count ?? 0);
+    };
+    refresh();
+    const t = setInterval(refresh, 30000);
+    return () => { alive = false; clearInterval(t); };
   }, [user]);
 
   // Load earned badges (and run backfill at most once per day in the background)
@@ -237,12 +255,18 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold">{profile?.display_name ?? user?.email?.split("@")[0]}</h1>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={() => setShowBadgePanel(true)} className="relative text-neutral-500 hover:text-neutral-300 text-lg">
+              <Link href="/notifications" className="relative text-neutral-500 hover:text-neutral-300 text-lg" aria-label="Notifications">
                 🔔
-                {newBadgeKeys.size > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-[8px] text-black font-bold">{newBadgeKeys.size}</span>
+                {unreadNotifs > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 rounded-full flex items-center justify-center text-[8px] text-black font-bold">{unreadNotifs > 9 ? "9+" : unreadNotifs}</span>
                 )}
-              </button>
+              </Link>
+              {newBadgeKeys.size > 0 && (
+                <button onClick={() => setShowBadgePanel(true)} className="relative text-neutral-500 hover:text-neutral-300 text-lg" aria-label="New badges">
+                  🏆
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-[8px] text-black font-bold">{newBadgeKeys.size}</span>
+                </button>
+              )}
               <Link href="/settings" className="text-neutral-500 hover:text-neutral-300 text-lg">⚙️</Link>
               <div className="text-right">
                 <span className="text-amber-500 font-black text-lg tracking-tight">GRIT<span className="text-neutral-500 font-black">ZONE</span></span>
@@ -312,6 +336,21 @@ export default function DashboardPage() {
               <p className="text-[11px] text-neutral-400">Generate workout & diet plans for any goal — gym, calisthenics, yoga, run, swim</p>
             </div>
             <span className="text-amber-500 text-xl">→</span>
+          </div>
+        </Link>
+
+        {/* Find a real coach hero — our USP */}
+        <Link
+          href="/coaches"
+          className="block mb-3 bg-gradient-to-br from-purple-500/20 via-pink-500/10 to-transparent border border-purple-500/40 hover:border-purple-500/60 rounded-2xl p-4 transition-all relative overflow-hidden"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🤝</span>
+            <div className="flex-1">
+              <p className="text-base font-bold">Find a real coach</p>
+              <p className="text-[11px] text-neutral-400">Trainers · Nutritionists · Set your budget. They guide, you grind.</p>
+            </div>
+            <span className="text-purple-300 text-xl">→</span>
           </div>
         </Link>
 

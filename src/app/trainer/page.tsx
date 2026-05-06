@@ -26,12 +26,20 @@ type Invite = {
   created_at: string;
 };
 
+type CoachRequest = {
+  id: string;
+  message: string | null;
+  created_at: string;
+  client: { id: string; display_name: string | null; avatar_url: string | null } | null;
+};
+
 export default function TrainerDashboardPage() {
   const { user, role, loading: authLoading } = useAuth({ requireRole: "coach" });
   const isNutritionist = role === "nutritionist";
   const coachLabel = isNutritionist ? "Nutritionist" : "Trainer";
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
+  const [requests, setRequests] = useState<CoachRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -46,7 +54,7 @@ export default function TrainerDashboardPage() {
     if (!user) return;
     setLoading(true);
 
-    const [{ data: rels }, { data: invs }] = await Promise.all([
+    const [{ data: rels }, { data: invs }, { data: reqs }] = await Promise.all([
       supabase
         .from("trainer_clients")
         .select("id, status, started_at, client:profiles!trainer_clients_client_id_fkey(id, display_name, avatar_url)")
@@ -57,6 +65,12 @@ export default function TrainerDashboardPage() {
         .select("*")
         .eq("trainer_id", user.id)
         .is("redeemed_by", null)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("coaching_requests")
+        .select("id, message, created_at, client:profiles!coaching_requests_client_id_fkey(id, display_name, avatar_url)")
+        .eq("coach_id", user.id)
+        .eq("status", "pending")
         .order("created_at", { ascending: false }),
     ]);
 
@@ -76,6 +90,7 @@ export default function TrainerDashboardPage() {
 
     setClients(rowsWithLast);
     setInvites((invs as Invite[]) || []);
+    setRequests((reqs as unknown as CoachRequest[]) || []);
     setLoading(false);
   }, [user]);
 
@@ -134,6 +149,22 @@ export default function TrainerDashboardPage() {
   async function endRelationship(relId: string) {
     if (!confirm("End this client relationship? They'll keep their data but you'll no longer see it.")) return;
     await supabase.from("trainer_clients").delete().eq("id", relId);
+    loadData();
+  }
+
+  async function respondRequest(requestId: string, action: "accept" | "decline") {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch("/api/coaching-request/respond", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ requestId, action }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || "Failed");
+      return;
+    }
+    showToast(action === "accept" ? "Client connected ✓" : "Request declined");
     loadData();
   }
 
@@ -204,6 +235,35 @@ export default function TrainerDashboardPage() {
           <Stat label="Checked in today" value={String(checkedInToday)} accent />
           <Stat label="Pending invites" value={String(invites.length)} />
         </div>
+
+        {/* Incoming coaching requests (client-initiated) */}
+        {requests.length > 0 && (
+          <section className="bg-gradient-to-br from-purple-500/15 to-transparent border border-purple-500/30 rounded-2xl p-4 mb-6">
+            <h2 className="text-sm font-bold mb-1 flex items-center gap-2">
+              💬 Coaching requests
+              <span className="text-[10px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-bold">{requests.length}</span>
+            </h2>
+            <p className="text-[11px] text-neutral-500 mb-3">These clients found you in the directory and want to work with you. Tap accept to connect immediately.</p>
+            <div className="flex flex-col gap-2">
+              {requests.map((r) => (
+                <div key={r.id} className="bg-black/30 rounded-xl p-3 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-purple-500/20 text-purple-300 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                    {r.client?.display_name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{r.client?.display_name || "A client"}</p>
+                    {r.message && <p className="text-[11px] text-neutral-300 mt-0.5 line-clamp-2">{r.message}</p>}
+                    <p className="text-[9px] text-neutral-500 mt-1">{new Date(r.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button onClick={() => respondRequest(r.id, "accept")} className="bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold rounded-lg px-3 py-1.5">Accept</button>
+                    <button onClick={() => respondRequest(r.id, "decline")} className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[11px] rounded-lg px-3 py-1.5">Decline</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Invite section */}
         <section className="bg-[#141414] border border-neutral-800 rounded-2xl p-4 mb-6">

@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     generationConfig: { responseMimeType: "application/json", temperature: 0.7 },
   });
 
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
       status,
       inputs,
       plan,
-      generated_by: "gemini-2.0-flash",
+      generated_by: "gemini-2.5-flash",
       prompt_version: "v1",
     })
     .select("id")
@@ -277,6 +277,33 @@ export async function POST(req: NextRequest) {
 
   // Bump usage atomically
   await admin.rpc("bump_ai_plan_usage", { p_user_id: user.id });
+
+  // Activate plan & propagate targets so the daily logging tabs reflect it.
+  // For diet plans: extract target_kcal + macros into daily_targets.
+  // For workout plans: just mark this as the user's active workout plan.
+  if (status === "active") {
+    if (inputs.plan_type === "diet") {
+      const planObj = plan as {
+        target_kcal?: number;
+        macros?: { protein_g?: number; carbs_g?: number; fat_g?: number };
+      };
+      if (planObj?.target_kcal) {
+        await admin.from("daily_targets").upsert({
+          user_id: user.id,
+          target_kcal: Math.round(planObj.target_kcal),
+          target_protein_g: planObj.macros?.protein_g ? Math.round(planObj.macros.protein_g) : null,
+          target_carbs_g: planObj.macros?.carbs_g ? Math.round(planObj.macros.carbs_g) : null,
+          target_fat_g: planObj.macros?.fat_g ? Math.round(planObj.macros.fat_g) : null,
+          source: "ai_plan",
+          source_plan_id: planRow.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+      }
+      await admin.from("profiles").update({ active_diet_plan_id: planRow.id }).eq("id", user.id);
+    } else {
+      await admin.from("profiles").update({ active_workout_plan_id: planRow.id }).eq("id", user.id);
+    }
+  }
 
   // Queue for review if Pro Max
   let reviewId: string | null = null;

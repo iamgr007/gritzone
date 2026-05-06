@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
@@ -97,6 +98,36 @@ export default function FoodPage() {
       });
   }, [user, date]);
 
+  // Daily targets — populated by AI diet plan or set manually.
+  // Falls back to baseline values so the UI never looks broken.
+  const [targets, setTargets] = useState<{
+    target_kcal: number;
+    target_protein_g: number;
+    target_carbs_g: number;
+    target_fat_g: number;
+    source: string | null;
+  }>({ target_kcal: 2200, target_protein_g: 150, target_carbs_g: 250, target_fat_g: 70, source: null });
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("daily_targets")
+      .select("target_kcal, target_protein_g, target_carbs_g, target_fat_g, source")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.target_kcal) {
+          setTargets({
+            target_kcal: data.target_kcal || 2200,
+            target_protein_g: data.target_protein_g || 150,
+            target_carbs_g: data.target_carbs_g || 250,
+            target_fat_g: data.target_fat_g || 70,
+            source: data.source,
+          });
+        }
+      });
+  }, [user]);
+
   useEffect(() => {
     if (showSearch && searchRef.current) {
       setTimeout(() => searchRef.current?.focus(), 100);
@@ -107,7 +138,7 @@ export default function FoodPage() {
   const totalProtein = logs.reduce((s, l) => s + l.protein, 0);
   const totalCarbs = logs.reduce((s, l) => s + l.carbs, 0);
   const totalFat = logs.reduce((s, l) => s + l.fat, 0);
-  const calGoal = 2200;
+  const calGoal = targets.target_kcal;
 
   async function addFood(meal: MealType) {
     if (!user || !selectedFood) return;
@@ -307,12 +338,21 @@ export default function FoodPage() {
 
         {/* Daily Summary Ring */}
         <div className="bg-[#141414] rounded-2xl border border-neutral-800 p-4 mb-5">
+          {targets.source === "ai_plan" && (
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-neutral-800/60">
+              <div className="flex items-center gap-2">
+                <span className="text-base">✨</span>
+                <p className="text-[11px] text-neutral-300">Targets from your AI diet plan</p>
+              </div>
+              <Link href="/ai-coach" className="text-[10px] text-amber-500 hover:underline">View plan →</Link>
+            </div>
+          )}
           <div className="flex items-center gap-5">
             <CalorieRing current={totalCal} goal={calGoal} />
             <div className="flex-1 grid grid-cols-3 gap-2">
-              <MacroBar label="Protein" current={totalProtein} goal={150} color="bg-blue-500" unit="g" />
-              <MacroBar label="Carbs" current={totalCarbs} goal={250} color="bg-amber-500" unit="g" />
-              <MacroBar label="Fat" current={totalFat} goal={70} color="bg-pink-500" unit="g" />
+              <MacroBar label="Protein" current={totalProtein} goal={targets.target_protein_g} color="bg-blue-500" unit="g" />
+              <MacroBar label="Carbs" current={totalCarbs} goal={targets.target_carbs_g} color="bg-amber-500" unit="g" />
+              <MacroBar label="Fat" current={totalFat} goal={targets.target_fat_g} color="bg-pink-500" unit="g" />
             </div>
           </div>
         </div>

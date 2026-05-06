@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notify } from "@/lib/notify";
 
 // Client redeems a trainer's invite code.
 // Body: { code: string }
@@ -89,6 +90,19 @@ export async function POST(req: NextRequest) {
     .from("trainer_invites")
     .update({ redeemed_by: user.id, redeemed_at: new Date().toISOString() })
     .eq("id", invite.id);
+
+  // Notify the coach that a client just connected.
+  const clientName =
+    (user.user_metadata?.display_name as string) ||
+    user.email?.split("@")[0] ||
+    "A new client";
+  await notify({
+    userId: invite.trainer_id,
+    kind: "client_joined",
+    title: "New client connected 🎉",
+    body: `${clientName} just used your invite code.`,
+    href: "/trainer",
+  });
 
   return NextResponse.json({
     ok: true,

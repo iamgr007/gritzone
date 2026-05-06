@@ -14,6 +14,11 @@ export default function TrainerProfilePage() {
   const [years, setYears] = useState<string>("");
   const [city, setCity] = useState("");
   const [rate, setRate] = useState<string>("");
+  const [hourly, setHourly] = useState<string>("");
+  const [session, setSession] = useState<string>("");
+  const [accepting, setAccepting] = useState(true);
+  const [languages, setLanguages] = useState("");
+  const [modes, setModes] = useState("");
   const [certs, setCerts] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -24,7 +29,7 @@ export default function TrainerProfilePage() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, trainer_bio, trainer_specialty, trainer_experience_years, trainer_city, trainer_rate_inr, trainer_certifications")
+        .select("display_name, trainer_bio, trainer_specialty, trainer_experience_years, trainer_city, trainer_rate_inr, trainer_hourly_inr, trainer_session_inr, trainer_accepting_clients, trainer_languages, trainer_modes, trainer_certifications")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
@@ -34,6 +39,11 @@ export default function TrainerProfilePage() {
         setYears(data.trainer_experience_years?.toString() || "");
         setCity(data.trainer_city || "");
         setRate(data.trainer_rate_inr?.toString() || "");
+        setHourly(data.trainer_hourly_inr?.toString() || "");
+        setSession(data.trainer_session_inr?.toString() || "");
+        setAccepting(data.trainer_accepting_clients !== false);
+        setLanguages(data.trainer_languages || "");
+        setModes(data.trainer_modes || "");
         setCerts(data.trainer_certifications || "");
       }
     })();
@@ -52,6 +62,11 @@ export default function TrainerProfilePage() {
         trainer_experience_years: years ? parseInt(years) : null,
         trainer_city: city.trim() || null,
         trainer_rate_inr: rate ? parseInt(rate) : null,
+        trainer_hourly_inr: hourly ? parseInt(hourly) : null,
+        trainer_session_inr: session ? parseInt(session) : null,
+        trainer_accepting_clients: accepting,
+        trainer_languages: languages.trim() || null,
+        trainer_modes: modes.trim() || null,
         trainer_certifications: certs.trim() || null,
       })
       .eq("id", user.id);
@@ -103,9 +118,45 @@ export default function TrainerProfilePage() {
           </Field>
         </div>
 
-        <Field label="Monthly rate (₹)" hint="Optional. Shown to clients considering hiring you. Leave blank to hide.">
-          <input type="number" min={0} value={rate} onChange={(e) => setRate(e.target.value)} placeholder="3000" />
+        <Field label="Pricing" hint="Optional. Leave any field blank to hide it. Clients see whatever you fill in.">
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <input type="number" min={0} value={hourly} onChange={(e) => setHourly(e.target.value)} placeholder="₹/hour" className="text-sm" />
+              <p className="text-[10px] text-neutral-500 mt-1 text-center">Hourly</p>
+            </div>
+            <div>
+              <input type="number" min={0} value={session} onChange={(e) => setSession(e.target.value)} placeholder="₹/session" className="text-sm" />
+              <p className="text-[10px] text-neutral-500 mt-1 text-center">Per session</p>
+            </div>
+            <div>
+              <input type="number" min={0} value={rate} onChange={(e) => setRate(e.target.value)} placeholder="₹/month" className="text-sm" />
+              <p className="text-[10px] text-neutral-500 mt-1 text-center">Monthly</p>
+            </div>
+          </div>
         </Field>
+
+        <Field label="Languages" hint="Comma-separated. Helps clients find you.">
+          <input value={languages} onChange={(e) => setLanguages(e.target.value)} placeholder="English, Hindi" />
+        </Field>
+
+        <Field label="Modes" hint="How you coach. Comma-separated, e.g. online, in-person, hybrid.">
+          <input value={modes} onChange={(e) => setModes(e.target.value)} placeholder="online, in-person" />
+        </Field>
+
+        <div className="flex items-center justify-between bg-[#141414] border border-neutral-800 rounded-xl p-4">
+          <div>
+            <p className="text-sm font-semibold">Accepting new clients</p>
+            <p className="text-[11px] text-neutral-500 mt-0.5">Turn off when your roster is full. You&apos;ll still appear in the directory but with a &quot;not accepting&quot; badge.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAccepting(v => !v)}
+            className={`relative w-12 h-7 rounded-full transition-colors flex-shrink-0 ${accepting ? "bg-amber-500" : "bg-neutral-700"}`}
+            aria-pressed={accepting}
+          >
+            <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${accepting ? "translate-x-5" : ""}`} />
+          </button>
+        </div>
 
         <Field label="Certifications" hint={isNutritionist ? "K11 Nutrition, ISSN, RD, etc. Comma-separated." : "ACE, NSCA, K11, etc. Comma-separated."}>
           <input value={certs} onChange={(e) => setCerts(e.target.value)} placeholder={isNutritionist ? "K11 Nutrition, ISSN-CISSN" : "ACE-CPT, K11 Nutrition"} />

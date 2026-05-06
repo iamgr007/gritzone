@@ -62,3 +62,6 @@ screenshot*.png
 # private docs / build output
 gritzone_invoice.pdf
 /www/
+
+# Google OAuth client secret (DO NOT COMMIT)
+client_secret_*.json
