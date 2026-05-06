@@ -27,7 +27,9 @@ type Invite = {
 };
 
 export default function TrainerDashboardPage() {
-  const { user, loading: authLoading } = useAuth({ requireRole: "trainer" });
+  const { user, role, loading: authLoading } = useAuth({ requireRole: "coach" });
+  const isNutritionist = role === "nutritionist";
+  const coachLabel = isNutritionist ? "Nutritionist" : "Trainer";
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,7 +162,7 @@ export default function TrainerDashboardPage() {
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <span className="text-amber-500 font-black text-lg tracking-tight">GRIT<span className="text-neutral-400">ZONE</span></span>
-            <span className="ml-2 text-[9px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Trainer</span>
+            <span className="ml-2 text-[9px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">{coachLabel}</span>
           </div>
           <button
             onClick={async () => { await supabase.auth.signOut(); window.location.href = "/login"; }}
@@ -171,7 +173,11 @@ export default function TrainerDashboardPage() {
 
       <div className="max-w-3xl mx-auto px-4 pt-6">
         <h1 className="text-2xl font-bold mb-1">Your Roster</h1>
-        <p className="text-neutral-500 text-sm mb-5">Track every client&apos;s workouts, diet, and adherence in one place.</p>
+        <p className="text-neutral-500 text-sm mb-5">
+          {isNutritionist
+            ? "Track every client's meals, macros, weight, and adherence in one place."
+            : "Track every client's workouts, diet, and adherence in one place."}
+        </p>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 mb-6">
@@ -278,7 +284,7 @@ export default function TrainerDashboardPage() {
 
         <div className="mt-8 text-center">
           <Link href="/trainer/profile" className="text-xs text-neutral-500 hover:text-amber-400">
-            Edit your trainer profile →
+            Edit your {coachLabel.toLowerCase()} profile →
           </Link>
         </div>
       </div>

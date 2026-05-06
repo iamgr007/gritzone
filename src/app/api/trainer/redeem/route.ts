@@ -54,12 +54,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "You can't redeem your own invite" }, { status: 400 });
   }
 
-  // Get trainer name for response
+  // Get coach role + name for response
   const { data: trainerProfile } = await admin
     .from("profiles")
-    .select("display_name, trainer_specialty")
+    .select("display_name, role, trainer_specialty")
     .eq("id", invite.trainer_id)
     .maybeSingle();
+
+  // Set scope based on coach role:
+  //  - trainer        → workouts only by default (clients with both should redeem 2 invites)
+  //  - nutritionist   → diet only by default
+  // Client can adjust scope later (Phase 2).
+  const isNutritionist = trainerProfile?.role === "nutritionist";
+  const scope_workouts = !isNutritionist;
+  const scope_diet = isNutritionist;
 
   // Create the trainer-client link (idempotent on the unique constraint)
   const { error: linkErr } = await admin
@@ -68,6 +76,8 @@ export async function POST(req: NextRequest) {
       trainer_id: invite.trainer_id,
       client_id: user.id,
       status: "active",
+      scope_workouts,
+      scope_diet,
     }, { onConflict: "trainer_id,client_id" });
 
   if (linkErr) {
@@ -82,6 +92,11 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    trainer: { id: invite.trainer_id, name: trainerProfile?.display_name, specialty: trainerProfile?.trainer_specialty },
+    trainer: {
+      id: invite.trainer_id,
+      name: trainerProfile?.display_name,
+      role: trainerProfile?.role,
+      specialty: trainerProfile?.trainer_specialty,
+    },
   });
 }

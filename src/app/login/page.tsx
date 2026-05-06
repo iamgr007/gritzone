@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<"client" | "trainer">("client");
+  const [role, setRole] = useState<"client" | "trainer" | "nutritionist">("client");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +19,11 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("mode") === "signup") setMode("signup");
-    if (params.get("role") === "trainer") { setMode("signup"); setRole("trainer"); }
+    const r = params.get("role");
+    if (r === "trainer" || r === "nutritionist") {
+      setMode("signup");
+      setRole(r);
+    }
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -69,7 +73,7 @@ export default function LoginPage() {
           }, { onConflict: "user_id,badge_key" });
         }
       }
-      window.location.href = role === "trainer" ? "/trainer" : "/onboarding";
+      window.location.href = role === "client" ? "/onboarding" : "/trainer";
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -92,7 +96,8 @@ export default function LoginPage() {
           .select("role")
           .eq("id", loginUser.id)
           .maybeSingle();
-        window.location.href = prof?.role === "trainer" ? "/trainer" : "/dashboard";
+        const isCoach = prof?.role === "trainer" || prof?.role === "nutritionist";
+        window.location.href = isCoach ? "/trainer" : "/dashboard";
         return;
       }
       window.location.href = "/dashboard";
@@ -121,25 +126,10 @@ export default function LoginPage() {
           {mode === "signup" && (
             <div>
               <label className="block text-sm text-neutral-400 mb-1.5">I&apos;m signing up as</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRole("client")}
-                  className={`py-3 rounded-xl border text-sm font-semibold transition-all ${role === "client" ? "bg-amber-500 border-amber-500 text-black" : "bg-neutral-900 border-neutral-800 text-neutral-300"}`}
-                >
-                  <div className="text-base mb-0.5">💪</div>
-                  Client
-                  <p className={`text-[10px] font-normal mt-0.5 ${role === "client" ? "text-black/70" : "text-neutral-500"}`}>Track my fitness</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole("trainer")}
-                  className={`py-3 rounded-xl border text-sm font-semibold transition-all ${role === "trainer" ? "bg-amber-500 border-amber-500 text-black" : "bg-neutral-900 border-neutral-800 text-neutral-300"}`}
-                >
-                  <div className="text-base mb-0.5">🏆</div>
-                  Trainer
-                  <p className={`text-[10px] font-normal mt-0.5 ${role === "trainer" ? "text-black/70" : "text-neutral-500"}`}>Manage my clients</p>
-                </button>
+              <div className="grid grid-cols-3 gap-2">
+                <RoleCard active={role === "client"} onClick={() => setRole("client")} icon="💪" title="Client" sub="Track my fitness" />
+                <RoleCard active={role === "trainer"} onClick={() => setRole("trainer")} icon="🏆" title="Trainer" sub="Coach lifters" />
+                <RoleCard active={role === "nutritionist"} onClick={() => setRole("nutritionist")} icon="🥗" title="Nutritionist" sub="Coach diets" />
               </div>
             </div>
           )}
@@ -236,6 +226,20 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function RoleCard({ active, onClick, icon, title, sub }: { active: boolean; onClick: () => void; icon: string; title: string; sub: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`py-3 px-1 rounded-xl border text-xs font-semibold transition-all ${active ? "bg-amber-500 border-amber-500 text-black" : "bg-neutral-900 border-neutral-800 text-neutral-300"}`}
+    >
+      <div className="text-base mb-0.5">{icon}</div>
+      {title}
+      <p className={`text-[9px] font-normal mt-0.5 leading-tight ${active ? "text-black/70" : "text-neutral-500"}`}>{sub}</p>
+    </button>
   );
 }
 

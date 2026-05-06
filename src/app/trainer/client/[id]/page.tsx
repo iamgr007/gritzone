@@ -24,7 +24,8 @@ type Profile = {
 
 export default function TrainerClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: clientId } = usePromise(params);
-  const { user, loading: authLoading } = useAuth({ requireRole: "trainer" });
+  const { user, role, loading: authLoading } = useAuth({ requireRole: "coach" });
+  const isNutritionist = role === "nutritionist";
   const [profile, setProfile] = useState<Profile | null>(null);
   const [checkins, setCheckins] = useState<CheckinRow[]>([]);
   const [linkInfo, setLinkInfo] = useState<{ id: string; notes: string | null } | null>(null);
@@ -122,7 +123,7 @@ export default function TrainerClientDetailPage({ params }: { params: Promise<{ 
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/trainer" className="text-neutral-400 hover:text-white text-sm">←</Link>
           <h1 className="text-sm font-bold flex-1 truncate">{profile?.display_name || "Client"}</h1>
-          <span className="text-[9px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Trainer view</span>
+          <span className="text-[9px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">{isNutritionist ? "Nutritionist view" : "Trainer view"}</span>
         </div>
       </header>
 

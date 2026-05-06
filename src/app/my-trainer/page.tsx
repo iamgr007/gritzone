@@ -9,6 +9,7 @@ type TrainerInfo = {
   link_id: string;
   trainer_id: string;
   display_name: string;
+  role: "trainer" | "nutritionist";
   trainer_specialty: string | null;
   trainer_bio: string | null;
   trainer_city: string | null;
@@ -35,7 +36,7 @@ export default function MyTrainerPage() {
     setLoading(true);
     const { data } = await supabase
       .from("trainer_clients")
-      .select("id, started_at, status, trainer:profiles!trainer_clients_trainer_id_fkey(id, display_name, trainer_specialty, trainer_bio, trainer_city, trainer_experience_years, trainer_certifications)")
+      .select("id, started_at, status, trainer:profiles!trainer_clients_trainer_id_fkey(id, display_name, role, trainer_specialty, trainer_bio, trainer_city, trainer_experience_years, trainer_certifications)")
       .eq("client_id", user.id)
       .eq("status", "active");
     type Row = {
@@ -44,6 +45,7 @@ export default function MyTrainerPage() {
       trainer: {
         id: string;
         display_name: string;
+        role: "trainer" | "nutritionist";
         trainer_specialty: string | null;
         trainer_bio: string | null;
         trainer_city: string | null;
@@ -57,6 +59,7 @@ export default function MyTrainerPage() {
         link_id: r.id,
         trainer_id: r.trainer!.id,
         display_name: r.trainer!.display_name,
+        role: r.trainer!.role,
         trainer_specialty: r.trainer!.trainer_specialty,
         trainer_bio: r.trainer!.trainer_bio,
         trainer_city: r.trainer!.trainer_city,
@@ -124,13 +127,13 @@ export default function MyTrainerPage() {
       <header className="sticky top-0 z-30 backdrop-blur-lg bg-black/80 border-b border-neutral-900">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/settings" className="text-neutral-400 hover:text-white text-sm">←</Link>
-          <h1 className="text-sm font-bold flex-1">My Trainer</h1>
+          <h1 className="text-sm font-bold flex-1">My Coaches</h1>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 pt-6">
         <p className="text-xs text-neutral-500 mb-4">
-          Connect with a coach to let them see your check-ins, workouts, and meals. They&apos;ll guide your plan based on your real data.
+          Connect with one or more coaches — trainers, nutritionists, or both. They&apos;ll see the data you share so they can guide you with real information instead of guessing.
         </p>
 
         {/* Connected trainers */}
@@ -143,8 +146,13 @@ export default function MyTrainerPage() {
                     {t.display_name?.[0]?.toUpperCase() || "?"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate">{t.display_name}</p>
-                    {t.trainer_specialty && <p className="text-[11px] text-amber-400">{t.trainer_specialty}</p>}
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm truncate">{t.display_name}</p>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${t.role === "nutritionist" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>
+                        {t.role === "nutritionist" ? "🥗 Nutritionist" : "🏆 Trainer"}
+                      </span>
+                    </div>
+                    {t.trainer_specialty && <p className="text-[11px] text-neutral-400 mt-0.5">{t.trainer_specialty}</p>}
                   </div>
                 </div>
                 <dl className="grid grid-cols-3 gap-2 text-[10px] mb-3">
@@ -171,8 +179,8 @@ export default function MyTrainerPage() {
 
         {/* Redeem code */}
         <section className="bg-[#141414] border border-neutral-800 rounded-2xl p-4">
-          <h2 className="text-sm font-bold mb-1">Connect with a trainer</h2>
-          <p className="text-[11px] text-neutral-500 mb-3">Got an invite code from your coach? Enter it below.</p>
+          <h2 className="text-sm font-bold mb-1">Connect with a coach</h2>
+          <p className="text-[11px] text-neutral-500 mb-3">Got an invite code from your trainer or nutritionist? Enter it below. You can connect with multiple coaches.</p>
           <div className="flex gap-2">
             <input
               value={code}
@@ -195,10 +203,16 @@ export default function MyTrainerPage() {
         </section>
 
         <div className="mt-8 text-center">
-          <p className="text-[11px] text-neutral-500 mb-2">Are you a trainer?</p>
-          <Link href="/login?mode=signup&role=trainer" className="text-amber-400 text-xs hover:underline">
-            Create a trainer account →
-          </Link>
+          <p className="text-[11px] text-neutral-500 mb-2">Are you a coach?</p>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/login?mode=signup&role=trainer" className="text-amber-400 text-xs hover:underline">
+              Trainer sign-up →
+            </Link>
+            <span className="text-neutral-700">·</span>
+            <Link href="/login?mode=signup&role=nutritionist" className="text-green-400 text-xs hover:underline">
+              Nutritionist sign-up →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

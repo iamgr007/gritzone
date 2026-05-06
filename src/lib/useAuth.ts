@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { supabase, ensureProfile } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-export type AppRole = "client" | "trainer";
+export type AppRole = "client" | "trainer" | "nutritionist";
+export type RoleGuard = AppRole | "coach"; // "coach" matches trainer OR nutritionist
 
-export function useAuth(opts: { requireRole?: AppRole } = {}) {
+export function useAuth(opts: { requireRole?: RoleGuard } = {}) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,10 +28,17 @@ export function useAuth(opts: { requireRole?: AppRole } = {}) {
         .maybeSingle();
       const userRole = (prof?.role as AppRole) || "client";
 
-      // Enforce required role: bounce to the right home
-      if (opts.requireRole && userRole !== opts.requireRole) {
-        window.location.replace(userRole === "trainer" ? "/trainer" : "/dashboard");
-        return;
+      // Enforce required role
+      if (opts.requireRole) {
+        const ok =
+          opts.requireRole === userRole ||
+          (opts.requireRole === "coach" && (userRole === "trainer" || userRole === "nutritionist"));
+        if (!ok) {
+          window.location.replace(
+            userRole === "trainer" || userRole === "nutritionist" ? "/trainer" : "/dashboard"
+          );
+          return;
+        }
       }
 
       setRole(userRole);

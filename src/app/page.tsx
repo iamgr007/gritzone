@@ -15,7 +15,8 @@ export default function LandingPage() {
           .select("role")
           .eq("id", data.user.id)
           .maybeSingle();
-        window.location.replace(prof?.role === "trainer" ? "/trainer" : "/dashboard");
+        const isCoach = prof?.role === "trainer" || prof?.role === "nutritionist";
+        window.location.replace(isCoach ? "/trainer" : "/dashboard");
       } else {
         setChecking(false);
       }

@@ -124,8 +124,8 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <span className="text-xl">🏆</span>
               <div>
-                <p className="font-semibold text-sm">My Trainer</p>
-                <p className="text-[10px] text-neutral-500">Connect with your coach using their invite code</p>
+                <p className="font-semibold text-sm">My Coaches</p>
+                <p className="text-[10px] text-neutral-500">Connect with trainers & nutritionists using their invite code</p>
               </div>
             </div>
             <span className="text-neutral-500">→</span>

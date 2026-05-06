@@ -24,14 +24,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check role
+  // Check role — trainers and nutritionists can both invite clients
   const { data: profile } = await userClient
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
-  if (profile?.role !== "trainer") {
-    return NextResponse.json({ error: "Only trainers can create invites" }, { status: 403 });
+  if (profile?.role !== "trainer" && profile?.role !== "nutritionist") {
+    return NextResponse.json({ error: "Only coaches can create invites" }, { status: 403 });
   }
 
   const { targetEmail } = (await req.json().catch(() => ({}))) as { targetEmail?: string };

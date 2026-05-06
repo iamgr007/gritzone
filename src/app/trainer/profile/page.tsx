@@ -6,7 +6,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 
 export default function TrainerProfilePage() {
-  const { user, loading: authLoading } = useAuth({ requireRole: "trainer" });
+  const { user, role, loading: authLoading } = useAuth({ requireRole: "coach" });
+  const isNutritionist = role === "nutritionist";
+  const coachLabel = isNutritionist ? "Nutritionist" : "Trainer";
   const [bio, setBio] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [years, setYears] = useState<string>("");
@@ -71,7 +73,7 @@ export default function TrainerProfilePage() {
       <header className="sticky top-0 z-30 backdrop-blur-lg bg-black/80 border-b border-neutral-900">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/trainer" className="text-neutral-400 hover:text-white text-sm">←</Link>
-          <h1 className="text-sm font-bold flex-1">Trainer Profile</h1>
+          <h1 className="text-sm font-bold flex-1">{coachLabel} Profile</h1>
         </div>
       </header>
 
@@ -84,12 +86,12 @@ export default function TrainerProfilePage() {
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" />
         </Field>
 
-        <Field label="Specialty" hint="e.g. Strength training, Fat loss, Powerlifting, Pre/post-natal">
+        <Field label="Specialty" hint={isNutritionist ? "e.g. Weight loss, PCOS, Sports nutrition, Diabetic diet" : "e.g. Strength training, Fat loss, Powerlifting, Pre/post-natal"}>
           <input value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="What do you specialize in?" />
         </Field>
 
         <Field label="Bio" hint="A short paragraph about your coaching philosophy. Markdown not supported.">
-          <textarea rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="I help everyday lifters build strength sustainably..." className="text-sm" />
+          <textarea rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder={isNutritionist ? "I help clients hit their macros sustainably without crash diets..." : "I help everyday lifters build strength sustainably..."} className="text-sm" />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
@@ -105,8 +107,8 @@ export default function TrainerProfilePage() {
           <input type="number" min={0} value={rate} onChange={(e) => setRate(e.target.value)} placeholder="3000" />
         </Field>
 
-        <Field label="Certifications" hint="ACE, NSCA, K11, etc. Comma-separated.">
-          <input value={certs} onChange={(e) => setCerts(e.target.value)} placeholder="ACE-CPT, K11 Nutrition" />
+        <Field label="Certifications" hint={isNutritionist ? "K11 Nutrition, ISSN, RD, etc. Comma-separated." : "ACE, NSCA, K11, etc. Comma-separated."}>
+          <input value={certs} onChange={(e) => setCerts(e.target.value)} placeholder={isNutritionist ? "K11 Nutrition, ISSN-CISSN" : "ACE-CPT, K11 Nutrition"} />
         </Field>
 
         <button
