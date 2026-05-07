@@ -8,6 +8,7 @@ import AppHeader from "@/components/AppHeader";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import BodyMap from "@/components/BodyMap";
 import MicButton from "@/components/MicButton";
+import VoiceLogFab from "@/components/VoiceLogFab";
 import Link from "next/link";
 import { EXERCISES, MUSCLE_GROUPS, searchExercises, type Exercise } from "@/lib/exercise-data";
 import { celebrate, haptic } from "@/lib/celebrate";
@@ -147,7 +148,7 @@ export default function WorkoutPage() {
   useEffect(() => { persist(); }, [persist]);
 
   // Load history
-  useEffect(() => {
+  const reloadHistory = useCallback(() => {
     if (!user) return;
     supabase
       .from("workouts")
@@ -157,6 +158,10 @@ export default function WorkoutPage() {
       .limit(20)
       .then(({ data }) => setHistory((data as SavedWorkout[]) ?? []));
   }, [user]);
+
+  useEffect(() => {
+    reloadHistory();
+  }, [reloadHistory]);
 
   function startWorkout() {
     startTimeRef.current = Date.now();
@@ -875,6 +880,7 @@ export default function WorkoutPage() {
           </div>
         )}
 
+        <VoiceLogFab context="workout" onLogged={reloadHistory} />
         <Nav />
       </div>
     );
@@ -996,6 +1002,7 @@ export default function WorkoutPage() {
         </div>
       )}
 
+      <VoiceLogFab context="workout" onLogged={reloadHistory} />
       <Nav />
     </div>
   );

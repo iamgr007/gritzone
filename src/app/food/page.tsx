@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import AppHeader from "@/components/AppHeader";
 import MicButton from "@/components/MicButton";
+import VoiceLogFab from "@/components/VoiceLogFab";
 import { incrementQuestProgress } from "@/lib/quests-client";
 import { searchFoods, getPopularFoods, calcNutrition, type FoodItem } from "@/lib/food-data";
 
@@ -52,7 +53,6 @@ export default function FoodPage() {
 
   // Search modal
   const [showSearch, setShowSearch] = useState<MealType | null>(null);
-  const [autoVoice, setAutoVoice] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [quantity, setQuantity] = useState("");
@@ -84,6 +84,17 @@ export default function FoodPage() {
     setTimeout(() => setToast(null), 5000);
   }
 
+
+  const reloadLogs = useCallback(() => {
+    if (!user) return;
+    supabase
+      .from("food_logs")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("date", date)
+      .order("created_at")
+      .then(({ data }) => setLogs((data as FoodLog[]) ?? []));
+  }, [user, date]);
 
   useEffect(() => {
     if (!user) return;
@@ -254,7 +265,6 @@ export default function FoodPage() {
     setShowCustom(false);
     setCustomName(""); setCustomQty("100"); setCustomUnit("g");
     setCustomCal(""); setCustomProtein(""); setCustomCarbs(""); setCustomFat("");
-    setAutoVoice(false);
   }
 
   function closeScan() {
@@ -403,14 +413,7 @@ export default function FoodPage() {
                         📷
                       </button>
                       <button
-                        onClick={() => { setAutoVoice(true); setShowSearch(meal.type); }}
-                        className="text-amber-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-amber-500/10 text-base"
-                        title="Voice log this meal"
-                      >
-                        🎙️
-                      </button>
-                      <button
-                        onClick={() => { setAutoVoice(false); setShowSearch(meal.type); }}
+                        onClick={() => setShowSearch(meal.type)}
                         className="text-amber-500 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-amber-500/10"
                       >
                         +
@@ -469,7 +472,6 @@ export default function FoodPage() {
               </div>
               <MicButton
                 size="sm"
-                autoStart={autoVoice}
                 onTranscript={(t) => { setSearchQuery(t); setSelectedFood(null); setShowCustom(false); }}
               />
             </div>
@@ -783,6 +785,7 @@ export default function FoodPage() {
         </div>
       )}
 
+      <VoiceLogFab context="food" onLogged={reloadLogs} />
       <Nav />
     </div>
   );

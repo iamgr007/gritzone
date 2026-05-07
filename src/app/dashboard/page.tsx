@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/useAuth";
 import Nav from "@/components/Nav";
 import WaterWidget from "@/components/WaterWidget";
+import VoiceLogFab from "@/components/VoiceLogFab";
 import Link from "next/link";
 import type { CheckIn, Profile } from "@/lib/types";
 import { BADGE_MAP } from "@/lib/badges";
@@ -543,6 +544,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      <VoiceLogFab context="any" />
       <Nav />
     </div>
   );
