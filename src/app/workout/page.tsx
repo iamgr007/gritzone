@@ -1028,6 +1028,7 @@ function ExercisePickerModal({
             className="!bg-transparent !border-0 !p-0 text-lg !rounded-none flex-1"
             autoFocus
           />
+          <MicButton size="sm" onTranscript={(t) => setSearchQuery(t)} />
         </div>
 
         {/* Muscle Group Chips */}

@@ -31,6 +31,8 @@ type Props = {
   size?: "sm" | "md";
   /** Auto-stop after this many ms of silence/listening. Default 12s. */
   maxDurationMs?: number;
+  /** When this prop changes truthy, automatically start listening (used to auto-trigger from a parent button). */
+  autoStart?: boolean;
   className?: string;
 };
 
@@ -43,6 +45,7 @@ export default function MicButton({
   lang = "en-IN",
   size = "md",
   maxDurationMs = 12000,
+  autoStart = false,
   className = "",
 }: Props) {
   const [supported, setSupported] = useState<boolean>(false);
@@ -120,7 +123,33 @@ export default function MicButton({
     };
   }, []);
 
-  if (!supported) return null;
+  // Auto-start when parent flips autoStart=true (e.g. user tapped a "voice log" CTA)
+  useEffect(() => {
+    if (autoStart && supported && !listening) {
+      // small delay so the modal/keyboard has time to settle
+      const t = setTimeout(() => start(), 250);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, supported]);
+
+  if (!supported) {
+    // Render a disabled mic so users know the feature exists; common reasons it's
+    // unsupported: Firefox, plain http (not https), Capacitor WebView w/o the
+    // SpeechRecognition shim. We surface a tooltip rather than hiding silently.
+    const sizeClsOff = size === "sm" ? "w-8 h-8 text-sm" : "w-10 h-10 text-base";
+    return (
+      <button
+        type="button"
+        disabled
+        title="Voice input not supported on this browser. Open in Chrome/Safari over HTTPS."
+        aria-label="Voice input unavailable"
+        className={`shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-neutral-600 cursor-not-allowed opacity-60 ${sizeClsOff} ${className}`}
+      >
+        🎤
+      </button>
+    );
+  }
 
   const sizeCls = size === "sm" ? "w-8 h-8 text-sm" : "w-10 h-10 text-base";
   const stateCls = listening
